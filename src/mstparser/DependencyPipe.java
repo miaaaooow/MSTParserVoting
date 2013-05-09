@@ -3,7 +3,6 @@ package mstparser;
 import mstparser.io.*;
 import java.io.*;
 import gnu.trove.*;
-import java.util.*;
 
 public class DependencyPipe {
 
@@ -61,8 +60,9 @@ public class DependencyPipe {
 
 	protected final DependencyInstance nextInstance() throws IOException {
 		DependencyInstance instance = depReader.getNext();
-		if (instance == null || instance.forms == null)
+		if (instance == null || instance.forms == null) {
 			return null;
+		}
 
 		instance.setFeatureVector(createFeatureVector(instance));
 

@@ -19,27 +19,27 @@ import java.io.*;
 
 /**
  * A writer to create files in MST format.
- *
+ * 
  * <p>
  * Created: Sat Nov 10 15:25:10 2001
  * </p>
- *
+ * 
  * @author Jason Baldridge
  * @version $Id: MSTWriter.java 94 2007-01-17 17:05:12Z jasonbaldridge $
  * @see mstparser.io.DependencyWriter
  */
 public class MSTWriter extends DependencyWriter {
 
-    public MSTWriter (boolean labeled) {
-	this.labeled = labeled;
-    }
+	public MSTWriter(boolean labeled) {
+		this.labeled = labeled;
+	}
 
-    public void write(DependencyInstance instance) throws IOException {
-	writer.write(Util.join(instance.forms, '\t') + "\n");
-	writer.write(Util.join(instance.postags, '\t') + "\n");
-	if (labeled)
-	    writer.write(Util.join(instance.deprels, '\t') + "\n");
-	writer.write(Util.join(instance.heads, '\t') + "\n\n");
-    }
+	public void write(DependencyInstance instance) throws IOException {
+		writer.write(Util.join(instance.forms, '\t') + "\n");
+		writer.write(Util.join(instance.postags, '\t') + "\n");
+		if (labeled)
+			writer.write(Util.join(instance.deprels, '\t') + "\n");
+		writer.write(Util.join(instance.heads, '\t') + "\n\n");
+	}
 
 }
