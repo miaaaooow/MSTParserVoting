@@ -1,854 +1,976 @@
 package mstparser;
 
+import mstparser.io.*;
 import java.io.*;
+import gnu.trove.*;
 import java.util.*;
 
 public class DependencyPipe {
 
-	// features alphabet?
-	public Alphabet dataAlphabet;
-	// labels alphabet
-	public Alphabet typeAlphabet;
-	public String[] types;
-	public int[] typesInt;
+    public Alphabet dataAlphabet;
 	
-	public int votingModels;
-	public double [] votingModelsWeights;
+    public Alphabet typeAlphabet;
 
-	public boolean labeled = false;
+    private DependencyReader depReader;
+    private DependencyWriter depWriter;
 
-	public boolean createForest;
-
-	public DependencyPipe() throws IOException {
-		this(true);
-	}
-
-	public DependencyPipe(boolean createForest) throws IOException {
-		this.dataAlphabet = new Alphabet();
-		this.typeAlphabet = new Alphabet();
-		this.votingModels = -1;
-		this.createForest = createForest;
-	}
+    public String[] types;
+    public int[] typesInt;
 	
-	// check if the this is labeled version of the algorithm
-	public void setLabeledAndVoting(String file, boolean voting) throws IOException {
-		BufferedReader in = new BufferedReader(new FileReader(file));
-		/** added by Maria 
-		 * The expected format is:
-		 * line1: N_parsers
-		 * line2: weight1 weight2 ... weight_Nparsers
-		 * line3: empty**/
-		if (voting) {
-			// line 1
-			votingModels = Integer.parseInt(in.readLine());
-			// line 2
-			String [] votingModelsWeightsS = in.readLine().split(" ");
-			if (votingModelsWeightsS.length != votingModels) {
-				throw new IOException("Malformed voting weights line!");
-			} else {
-				votingModelsWeights = new double[votingModels];
-				for (int i = 0; i < votingModels; i++) {
-					votingModelsWeights[i] = Double.parseDouble(votingModelsWeightsS[i]);
-				}
-			}
-			// line 3
-			in.readLine();
-		}
-		in.readLine();
-		in.readLine();
-		in.readLine();
-		String line = in.readLine();
-		if (line.trim().length() > 0)
-			labeled = true;
-		in.close();
+    public boolean labeled = false;
+    private boolean isCONLL = true;
+
+    private ParserOptions options;
+
+    public DependencyPipe (ParserOptions options) throws IOException {
+	this.options = options;
+
+	if (!options.format.equals("CONLL"))
+	    isCONLL = false;
+
+	dataAlphabet = new Alphabet();
+	typeAlphabet = new Alphabet();
+
+	depReader = DependencyReader.createDependencyReader(options.format, options.discourseMode);
+    }
+
+    public void initInputFile (String file) throws IOException {
+	labeled = depReader.startReading(file);
+    }
+
+    public void initOutputFile (String file) throws IOException {
+	depWriter = 
+	    DependencyWriter.createDependencyWriter(options.format, labeled);
+	depWriter.startWriting(file);
+    }
+
+    public void outputInstance (DependencyInstance instance) throws IOException {
+	depWriter.write(instance);
+    }
+
+    public void close () throws IOException {
+	if (null != depWriter) {
+	    depWriter.finishWriting();
 	}
+    }
 
-	/**
-	 * Read a single parse tree in mst format
-	 * @param in - input stream
-	 * @return - three or four lines of the parsed properties
-	 * @throws IOException
-	 */
-	public String[][] readParseTree(BufferedReader in) throws IOException {
-		String line = in.readLine();
-		String pos_line = in.readLine();
-		String lab_line = labeled ? in.readLine() : pos_line;
-		String deps_line = in.readLine();
-		in.readLine(); // blank line
+    public String getType (int typeIndex) {
+	return types[typeIndex];
+    }
 
-		if (line == null)
-			return null;
+    protected final DependencyInstance nextInstance() throws IOException {
+	DependencyInstance instance = depReader.getNext();
+	if (instance == null || instance.forms == null) return null;
 
-		String[] toks = line.split("\t");
-		String[] pos = pos_line.split("\t");
-		String[] labs = lab_line.split("\t");
-		String[] deps = deps_line.split("\t");
-
-		String[] toks_new = new String[toks.length + 1];
-		String[] pos_new = new String[pos.length + 1];
-		String[] labs_new = new String[labs.length + 1];
-		String[] deps_new = new String[deps.length + 1];
-		toks_new[0] = "<root>";
-		pos_new[0] = "<root-POS>";
-		labs_new[0] = "<no-type>";
-		deps_new[0] = "-1";
-		for (int i = 0; i < toks.length; i++) {
-			toks_new[i + 1] = normalize(toks[i]);
-			pos_new[i + 1] = pos[i];
-			labs_new[i + 1] = labeled ? labs[i] : "<no-type>";
-			deps_new[i + 1] = deps[i];
-		}
-		toks = toks_new;
-		pos = pos_new;
-		labs = labs_new;
-		deps = deps_new;
-
-		String[][] result = new String[4][];
-		result[0] = toks;
-		result[1] = pos;
-		result[2] = labs;
-		result[3] = deps;
-		return result;
-	}
-
-	/**
-	 * Create the next instance from the input stream
-	 * @param in
-	 * @return
-	 * @throws IOException
-	 */
-	public DependencyInstance createInstance(BufferedReader in)
-			throws IOException {
-		// get toks/pos/labs/deps
-		String[][] treeLines = readParseTree(in);
-		if (treeLines == null)
-			return null;
-
-		String[] toks = treeLines[0];
-		String[] pos = treeLines[1];
-		String[] labs = treeLines[2];
-		String[] depsStr = treeLines[3];
-
-		int[] deps = new int[depsStr.length];
-		for (int i = 0; i < depsStr.length; i++) {
-			deps[i] = Integer.parseInt(depsStr[i]);
-		}
-
-		FeatureVector fv = createFeatureVector(toks, pos, labs, deps);
-
-		DependencyInstance result = new DependencyInstance(toks, pos, labs, fv);
-
-		String spans = "";
-		for (int i = 1; i < depsStr.length; i++) {
-			spans += depsStr[i] + "|" + i + ":" + typeAlphabet.lookupIndex(labs[i]) + " ";
-		}
-		result.actParseTree = spans.trim();
-
-		return result;
-	}
-
-	public DependencyInstance[] createInstances(String file, String featFileName)
-			throws IOException {
-
-		createAlphabet(file);
-
-		System.out.println("Num Features: " + dataAlphabet.size());
-
-		BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF8"));
-		String[][] lines = readParseTree(in);
-
-		LinkedList<DependencyInstance> lt = new LinkedList<DependencyInstance>();
-
-		ObjectOutputStream out = createForest ? new ObjectOutputStream(new FileOutputStream(featFileName)) : null;
-
-		int num1 = 0;
-		while (lines != null) {
-			System.out.println("Creating Feature Vector Instance: " + num1);
-
-			String[] toks = lines[0];
-			String[] pos = lines[1];
-			String[] labs = lines[2];
-			String[] deps = lines[3];
-
-			int[] deps1 = new int[deps.length];
-			for (int i = 0; i < deps.length; i++) {
-				deps1[i] = Integer.parseInt(deps[i]);
-			}
-
-			FeatureVector fv = createFeatureVector(toks, pos, labs, deps1);
-
-			DependencyInstance pti = new DependencyInstance(toks, pos, labs, fv);
-
-			String spans = "";
-			for (int i = 1; i < deps.length; i++) {
-				spans += deps[i] + "|" + i + ":" + typeAlphabet.lookupIndex(labs[i]) + " ";
-			}
-			pti.actParseTree = spans.trim();
-
-			if (createForest)
-				possibleFeatures(pti, out);
-			pti = null;
-
-			lt.add(new DependencyInstance(toks.length));
-
-			lines = readParseTree(in);
-			num1++;
-		}
-
-		closeAlphabets();
-
-		DependencyInstance[] instances = new DependencyInstance[lt.size()];
-		for (int i = 0; i < instances.length; i++) {
-			instances[i] = (DependencyInstance) lt.get(i);
-		}
-
-		if (createForest)
-			out.close();
-
-		in.close();
-
-		return instances;
-
-	}
-
-	private void createAlphabet(String file) throws IOException {
-
-		System.out.print("Creating Alphabet ... ");
-		BufferedReader in = new BufferedReader(new InputStreamReader(
-				new FileInputStream(file), "UTF8"));
-		String[][] lines = readParseTree(in);
-
-		while (lines != null) {
-
-			String[] toks = lines[0];
-			String[] pos = lines[1];
-			String[] labs = lines[2];
-			String[] deps = lines[3];
-
-			for (int i = 0; i < labs.length; i++)
-				typeAlphabet.lookupIndex(labs[i]);
-
-			int[] deps1 = new int[deps.length];
-			for (int i = 0; i < deps.length; i++) {
-				deps1[i] = Integer.parseInt(deps[i]);
-			}
-
-			createFeatureVector(toks, pos, labs, deps1);
-
-			lines = readParseTree(in);
-		}
-
-		closeAlphabets();
-
-		in.close();
-
-		System.out.println("Done.");
-	}
-
-	public void closeAlphabets() {
-		dataAlphabet.stopGrowth();
-		typeAlphabet.stopGrowth();
-
-		types = new String[typeAlphabet.size()];
-		Object[] keys = typeAlphabet.toArray();
-		for (int i = 0; i < keys.length; i++) {
-			int indx = typeAlphabet.lookupIndex(keys[i]);
-			types[indx] = (String) keys[i];
-		}
-
-		KBestParseForest.rootType = typeAlphabet.lookupIndex("<root-type>");
-
-	}
-
-	public String normalize(String s) {
-		if (s.matches("[0-9]+|[0-9]+\\.[0-9]+|[0-9]+[0-9,]+"))
-			return "<num>";
-
-		return s;
-	}
+	instance.setFeatureVector(createFeatureVector(instance));
 	
-	/**
-	 * 
-	 * @param toks - tokens of the sentence
-	 * @param pos - POS tags of the sentence
-	 * @param posA
-	 * @param small
-	 * @param large
-	 * @param attR 9 if true - right arrow, else - left
-	 * @param fv
-	 * @return
-	 */
-	public FeatureVector createFeatureVector(String[] toks, String[] pos,
-			String[] posA, int small, int large, boolean attR, FeatureVector fv) {
+	String[] labs = instance.deprels;
+	int[] heads = instance.heads;
 
-		String att = "";
-		if (attR)
-			att = "RA";
-		else
-			att = "LA";
+	StringBuffer spans = new StringBuffer(heads.length*5);
+	for(int i = 1; i < heads.length; i++) {
+	    spans.append(heads[i]).append("|").append(i).append(":").append(typeAlphabet.lookupIndex(labs[i])).append(" ");
+	}
+	instance.actParseTree = spans.substring(0,spans.length()-1);
+	
+	return instance;
+    }
 
-		int dist = Math.abs(large - small);
-		String distBool = "0";
-		if (dist > 1)
-			distBool = "1";
-		if (dist > 2)
-			distBool = "2";
-		if (dist > 3)
-			distBool = "3";
-		if (dist > 4)
-			distBool = "4";
-		if (dist > 5)
-			distBool = "5";
-		if (dist > 10)
-			distBool = "10";
 
-		String attDist = "&" + att + "&" + distBool;
+    public int[] createInstances(String file,
+				 File featFileName) throws IOException {
 
-		String pLeft = small > 0 ? pos[small - 1] : "STR";
-		String pRight = large < pos.length - 1 ? pos[large + 1] : "END";
-		String pLeftRight = small < large - 1 ? pos[small + 1] : "MID";
-		String pRightLeft = large > small + 1 ? pos[large - 1] : "MID";
-		String pLeftA = small > 0 ? posA[small - 1] : "STR";
-		String pRightA = large < pos.length - 1 ? posA[large + 1] : "END";
-		String pLeftRightA = small < large - 1 ? posA[small + 1] : "MID";
-		String pRightLeftA = large > small + 1 ? posA[large - 1] : "MID";
+	createAlphabet(file);
 
-		// feature posR posMid posL
-		for (int i = small + 1; i < large; i++) {
-			String allPos = pos[small] + " " + pos[i] + " " + pos[large];
-			String allPosA = posA[small] + " " + posA[i] + " " + posA[large];
-			fv = add("PC=" + allPos + attDist, 1.0, fv);
-			fv = add("1PC=" + allPos, 1.0, fv);
-			fv = add("XPC=" + allPosA + attDist, 1.0, fv);
-			fv = add("X1PC=" + allPosA, 1.0, fv);
+	System.out.println("Num Features: " + dataAlphabet.size());
+
+	labeled = depReader.startReading(file);
+
+	TIntArrayList lengths = new TIntArrayList();
+
+	ObjectOutputStream out = options.createForest
+	    ? new ObjectOutputStream(new FileOutputStream(featFileName))
+	    : null;
+		
+	DependencyInstance instance = depReader.getNext();
+	int num1 = 0;
+
+	System.out.println("Creating Feature Vector Instances: ");
+	while(instance != null) {
+	    System.out.print(num1 + " ");
+	    
+	    instance.setFeatureVector(createFeatureVector(instance));
+			
+	    String[] labs = instance.deprels;
+	    int[] heads = instance.heads;
+
+	    StringBuffer spans = new StringBuffer(heads.length*5);
+	    for(int i = 1; i < heads.length; i++) {
+		spans.append(heads[i]).append("|").append(i).append(":").append(typeAlphabet.lookupIndex(labs[i])).append(" ");
+	    }
+	    instance.actParseTree = spans.substring(0,spans.length()-1);
+
+	    lengths.add(instance.length());
+			
+	    if(options.createForest)
+		writeInstance(instance,out);
+	    instance = null;
+			
+	    instance = depReader.getNext();
+
+	    num1++;
+	}
+
+	System.out.println();
+
+	closeAlphabets();
+		
+	if(options.createForest)
+	    out.close();
+
+	return lengths.toNativeArray();
+		
+    }
+
+    private final void createAlphabet(String file) throws IOException {
+
+	System.out.print("Creating Alphabet ... ");
+
+	labeled = depReader.startReading(file);
+
+	DependencyInstance instance = depReader.getNext();
+
+	while(instance != null) {
+	    
+	    String[] labs = instance.deprels;
+	    for(int i = 0; i < labs.length; i++)
+		typeAlphabet.lookupIndex(labs[i]);
+			
+	    createFeatureVector(instance);
+			
+	    instance = depReader.getNext();
+	}
+
+	closeAlphabets();
+
+	System.out.println("Done.");
+    }
+	
+    public void closeAlphabets() {
+	dataAlphabet.stopGrowth();
+	typeAlphabet.stopGrowth();
+
+	types = new String[typeAlphabet.size()];
+	Object[] keys = typeAlphabet.toArray();
+	for(int i = 0; i < keys.length; i++) {
+	    int indx = typeAlphabet.lookupIndex(keys[i]);
+	    types[indx] = (String)keys[i];
+	}
+
+	KBestParseForest.rootType = typeAlphabet.lookupIndex("<root-type>");
+    }
+
+
+    // add with default 1.0
+    public final void add(String feat, FeatureVector fv) {
+	int num = dataAlphabet.lookupIndex(feat);
+	if(num >= 0)
+	    fv.add(num, 1.0);
+    }
+
+    public final void add(String feat, double val, FeatureVector fv) {
+	int num = dataAlphabet.lookupIndex(feat);
+	if(num >= 0)
+	    fv.add(num, val);
+    }
+
+	
+    public FeatureVector createFeatureVector(DependencyInstance instance) {
+
+	final int instanceLength = instance.length();
+
+	String[] labs = instance.deprels;
+	int[] heads = instance.heads;
+
+	FeatureVector fv = new FeatureVector();
+	for(int i = 0; i < instanceLength; i++) {
+	    if(heads[i] == -1)
+		continue;
+	    int small = i < heads[i] ? i : heads[i];
+	    int large = i > heads[i] ? i : heads[i];
+	    boolean attR = i < heads[i] ? false : true;
+	    addCoreFeatures(instance,small,large,attR,fv);
+	    if(labeled) {
+		addLabeledFeatures(instance,i,labs[i],attR,true,fv);
+		addLabeledFeatures(instance,heads[i],labs[i],attR,false,fv);
+	    }
+	}
+
+	addExtendedFeatures(instance, fv);
+
+	return fv;
+    }
+
+    protected void addExtendedFeatures(DependencyInstance instance, 
+				       FeatureVector fv) {}
+
+
+    public void addCoreFeatures(DependencyInstance instance,
+				int small,
+				int large,
+				boolean attR,
+				FeatureVector fv) {
+
+	String[] forms = instance.forms;
+	String[] pos = instance.postags;
+	String[] posA = instance.cpostags;
+
+	String att = attR ? "RA" : "LA";
+
+	int dist = Math.abs(large-small);
+	String distBool = "0";
+	if (dist > 10)
+	    distBool = "10";
+	else if (dist > 5)
+	    distBool = "5";
+	else
+	    distBool = Integer.toString(dist-1);
+		
+	String attDist = "&"+att+"&"+distBool;
+
+	addLinearFeatures("POS", pos, small, large, attDist, fv);
+	addLinearFeatures("CPOS", posA, small, large, attDist, fv);
+		
+
+	//////////////////////////////////////////////////////////////////////
+	
+	int headIndex = small;
+	int childIndex = large;
+	if (!attR) {
+	    headIndex = large;
+	    childIndex = small;
+	}
+
+	addTwoObsFeatures("HC", forms[headIndex], pos[headIndex], 
+			  forms[childIndex], pos[childIndex], attDist, fv);
+
+	if (isCONLL) {
+
+	    addTwoObsFeatures("HCA", forms[headIndex], posA[headIndex], 
+	    		      forms[childIndex], posA[childIndex], attDist, fv);
+	    
+	    addTwoObsFeatures("HCC", instance.lemmas[headIndex], pos[headIndex], 
+	    		      instance.lemmas[childIndex], pos[childIndex], 
+	    		      attDist, fv);
+	    
+	    addTwoObsFeatures("HCD", instance.lemmas[headIndex], posA[headIndex], 
+			      instance.lemmas[childIndex], posA[childIndex], 
+			      attDist, fv);
+
+	    if (options.discourseMode) {
+		// Note: The features invoked here are designed for
+		// discourse parsing (as opposed to sentential
+		// parsing). It is conceivable that they could help for
+		// sentential parsing, but current testing indicates that
+		// they hurt sentential parsing performance.
+
+		addDiscourseFeatures(instance, small, large,
+				     headIndex, childIndex, 
+				     attDist, fv);
+
+	    } else {
+		// Add in features from the feature lists. It assumes
+		// the feature lists can have different lengths for
+		// each item. For example, nouns might have a
+		// different number of morphological features than
+		// verbs.
+	    
+		for (int i=0; i<instance.feats[headIndex].length; i++) {
+		    for (int j=0; j<instance.feats[childIndex].length; j++) {
+			addTwoObsFeatures("FF"+i+"*"+j, 
+					  instance.forms[headIndex], 
+					  instance.feats[headIndex][i],
+					  instance.forms[childIndex], 
+					  instance.feats[childIndex][j], 
+					  attDist, fv);
+			
+			addTwoObsFeatures("LF"+i+"*"+j, 
+					  instance.lemmas[headIndex], 
+					  instance.feats[headIndex][i],
+					  instance.lemmas[childIndex], 
+					  instance.feats[childIndex][j], 
+					  attDist, fv);
+		    }
 		}
+	    }
 
-		// feature posL-1 posL posR posR+1
-		fv = add("PT=" + pLeft + " " + pos[small] + " " + pos[large] + " "
-				+ pRight + attDist, 1.0, fv);
-		fv = add("PT1=" + pos[small] + " " + pos[large] + " " + pRight
-				+ attDist, 1.0, fv);
-		fv = add(
-				"PT2=" + pLeft + " " + pos[small] + " " + pos[large] + attDist,
-				1.0, fv);
-		fv = add("PT3=" + pLeft + " " + pos[large] + " " + pRight + attDist,
-				1.0, fv);
-		fv = add("PT4=" + pLeft + " " + pos[small] + " " + pRight + attDist,
-				1.0, fv);
+	} else {
+	    // We are using the old MST format.  Pick up stem features
+	    // the way they used to be done. This is kept for
+	    // replicability of results for old versions.
+	    int hL = forms[headIndex].length();
+	    int cL = forms[childIndex].length();
+	    if (hL > 5 || cL > 5) {
+		addOldMSTStemFeatures(instance.lemmas[headIndex], 
+				      pos[headIndex],
+				      instance.lemmas[childIndex], 
+				      pos[childIndex],
+				      attDist, hL, cL, fv);
+	    }
+	}				       
+		
+    }
+ 
+    private final void addLinearFeatures(String type, String[] obsVals, 
+					 int first, int second,
+					 String attachDistance,
+					 FeatureVector fv) {
+	
+	String pLeft = first > 0 ? obsVals[first-1] : "STR";
+	String pRight = second < obsVals.length-1 ? obsVals[second+1] : "END";
+	String pLeftRight = first < second-1 ? obsVals[first+1] : "MID";
+	String pRightLeft = second > first+1 ? obsVals[second-1] : "MID";
 
-		fv = add("1PT=" + pLeft + " " + pos[small] + " " + pos[large] + " "
-				+ pRight, 1.0, fv);
-		fv = add("1PT1=" + pos[small] + " " + pos[large] + " " + pRight, 1.0,
-				fv);
-		fv = add("1PT2=" + pLeft + " " + pos[small] + " " + pos[large], 1.0, fv);
-		fv = add("1PT3=" + pLeft + " " + pos[large] + " " + pRight, 1.0, fv);
-		fv = add("1PT4=" + pLeft + " " + pos[small] + " " + pRight, 1.0, fv);
+	// feature posR posMid posL
+	StringBuilder featPos = 
+	    new StringBuilder(type+"PC="+obsVals[first]+" "+obsVals[second]);
 
-		fv = add("XPT=" + pLeftA + " " + posA[small] + " " + posA[large] + " "
-				+ pRightA + attDist, 1.0, fv);
-		fv = add("XPT1=" + posA[small] + " " + posA[large] + " " + pRightA
-				+ attDist, 1.0, fv);
-		fv = add("XPT2=" + pLeftA + " " + posA[small] + " " + posA[large]
-				+ attDist, 1.0, fv);
-		fv = add(
-				"XPT3=" + pLeftA + " " + posA[large] + " " + pRightA + attDist,
-				1.0, fv);
-		fv = add(
-				"XPT4=" + pLeftA + " " + posA[small] + " " + pRightA + attDist,
-				1.0, fv);
-
-		fv = add("X1PT=" + pLeftA + " " + posA[small] + " " + posA[large] + " "
-				+ pRightA, 1.0, fv);
-		fv = add("X1PT1=" + posA[small] + " " + posA[large] + " " + pRightA,
-				1.0, fv);
-		fv = add("X1PT2=" + pLeftA + " " + posA[small] + " " + posA[large],
-				1.0, fv);
-		fv = add("X1PT3=" + pLeftA + " " + posA[large] + " " + pRightA, 1.0, fv);
-		fv = add("X1PT4=" + pLeftA + " " + posA[small] + " " + pRightA, 1.0, fv);
-
-		// feature posL posL+1 posR-1 posR
-		fv = add("APT=" + pos[small] + " " + pLeftRight + " " + pRightLeft
-				+ " " + pos[large] + attDist, 1.0, fv);
-		fv = add("APT1=" + pos[small] + " " + pRightLeft + " " + pos[large]
-				+ attDist, 1.0, fv);
-		fv = add("APT2=" + pos[small] + " " + pLeftRight + " " + pos[large]
-				+ attDist, 1.0, fv);
-		fv = add("APT3=" + pLeftRight + " " + pRightLeft + " " + pos[large]
-				+ attDist, 1.0, fv);
-		fv = add("APT4=" + pos[small] + " " + pLeftRight + " " + pRightLeft
-				+ attDist, 1.0, fv);
-
-		fv = add("1APT=" + pos[small] + " " + pLeftRight + " " + pRightLeft
-				+ " " + pos[large], 1.0, fv);
-		fv = add("1APT1=" + pos[small] + " " + pRightLeft + " " + pos[large],
-				1.0, fv);
-		fv = add("1APT2=" + pos[small] + " " + pLeftRight + " " + pos[large],
-				1.0, fv);
-		fv = add("1APT3=" + pLeftRight + " " + pRightLeft + " " + pos[large],
-				1.0, fv);
-		fv = add("1APT4=" + pos[small] + " " + pLeftRight + " " + pRightLeft,
-				1.0, fv);
-
-		fv = add("XAPT=" + posA[small] + " " + pLeftRightA + " " + pRightLeftA
-				+ " " + posA[large] + attDist, 1.0, fv);
-		fv = add("XAPT1=" + posA[small] + " " + pRightLeftA + " " + posA[large]
-				+ attDist, 1.0, fv);
-		fv = add("XAPT2=" + posA[small] + " " + pLeftRightA + " " + posA[large]
-				+ attDist, 1.0, fv);
-		fv = add("XAPT3=" + pLeftRightA + " " + pRightLeftA + " " + posA[large]
-				+ attDist, 1.0, fv);
-		fv = add("XAPT4=" + posA[small] + " " + pLeftRightA + " " + pRightLeftA
-				+ attDist, 1.0, fv);
-
-		fv = add("X1APT=" + posA[small] + " " + pLeftRightA + " " + pRightLeftA
-				+ " " + posA[large], 1.0, fv);
-		fv = add("X1APT1=" + posA[small] + " " + pRightLeftA + " "
-				+ posA[large], 1.0, fv);
-		fv = add("X1APT2=" + posA[small] + " " + pLeftRightA + " "
-				+ posA[large], 1.0, fv);
-		fv = add("X1APT3=" + pLeftRightA + " " + pRightLeftA + " "
-				+ posA[large], 1.0, fv);
-		fv = add("X1APT4=" + posA[small] + " " + pLeftRightA + " "
-				+ pRightLeftA, 1.0, fv);
-
-		// feature posL-1 posL posR-1 posR
-		// feature posL posL+1 posR posR+1
-		fv = add("BPT=" + pLeft + " " + pos[small] + " " + pRightLeft + " "
-				+ pos[large] + attDist, 1.0, fv);
-		fv = add("1BPT=" + pLeft + " " + pos[small] + " " + pRightLeft + " "
-				+ pos[large], 1.0, fv);
-		fv = add("CPT=" + pos[small] + " " + pLeftRight + " " + pos[large]
-				+ " " + pRight + attDist, 1.0, fv);
-		fv = add("1CPT=" + pos[small] + " " + pLeftRight + " " + pos[large]
-				+ " " + pRight, 1.0, fv);
-
-		fv = add("XBPT=" + pLeftA + " " + posA[small] + " " + pRightLeftA + " "
-				+ posA[large] + attDist, 1.0, fv);
-		fv = add("X1BPT=" + pLeftA + " " + posA[small] + " " + pRightLeftA
-				+ " " + posA[large], 1.0, fv);
-		fv = add("XCPT=" + posA[small] + " " + pLeftRightA + " " + posA[large]
-				+ " " + pRightA + attDist, 1.0, fv);
-		fv = add("X1CPT=" + posA[small] + " " + pLeftRightA + " " + posA[large]
-				+ " " + pRightA, 1.0, fv);
-
-		String head = attR ? toks[small] : toks[large];
-		String headP = attR ? pos[small] : pos[large];
-		String child = attR ? toks[large] : toks[small];
-		String childP = attR ? pos[large] : pos[small];
-
-		String all = head + " " + headP + " " + child + " " + childP;
-		String hPos = headP + " " + child + " " + childP;
-		String cPos = head + " " + headP + " " + childP;
-		String hP = headP + " " + child;
-		String cP = head + " " + childP;
-		String oPos = headP + " " + childP;
-		String oLex = head + " " + child;
-
-		fv = add("A=" + all + attDist, 1.0, fv); // this
-		fv = add("B=" + hPos + attDist, 1.0, fv);
-		fv = add("C=" + cPos + attDist, 1.0, fv);
-		fv = add("D=" + hP + attDist, 1.0, fv);
-		fv = add("E=" + cP + attDist, 1.0, fv);
-		fv = add("F=" + oLex + attDist, 1.0, fv); // this
-		fv = add("G=" + oPos + attDist, 1.0, fv);
-		fv = add("H=" + head + " " + headP + attDist, 1.0, fv);
-		fv = add("I=" + headP + attDist, 1.0, fv);
-		fv = add("J=" + head + attDist, 1.0, fv); // this
-		fv = add("K=" + child + " " + childP + attDist, 1.0, fv);
-		fv = add("L=" + childP + attDist, 1.0, fv);
-		fv = add("M=" + child + attDist, 1.0, fv); // this
-
-		fv = add("AA=" + all, 1.0, fv); // this
-		fv = add("BB=" + hPos, 1.0, fv);
-		fv = add("CC=" + cPos, 1.0, fv);
-		fv = add("DD=" + hP, 1.0, fv);
-		fv = add("EE=" + cP, 1.0, fv);
-		fv = add("FF=" + oLex, 1.0, fv); // this
-		fv = add("GG=" + oPos, 1.0, fv);
-		fv = add("HH=" + head + " " + headP, 1.0, fv);
-		fv = add("II=" + headP, 1.0, fv);
-		fv = add("JJ=" + head, 1.0, fv); // this
-		fv = add("KK=" + child + " " + childP, 1.0, fv);
-		fv = add("LL=" + childP, 1.0, fv);
-		fv = add("MM=" + child, 1.0, fv); // this
-
-		if (head.length() > 5 || child.length() > 5) {
-			int hL = head.length();
-			int cL = child.length();
-
-			head = hL > 5 ? head.substring(0, 5) : head;
-			child = cL > 5 ? child.substring(0, 5) : child;
-
-			all = head + " " + headP + " " + child + " " + childP;
-			hPos = headP + " " + child + " " + childP;
-			cPos = head + " " + headP + " " + childP;
-			hP = headP + " " + child;
-			cP = head + " " + childP;
-			oPos = headP + " " + childP;
-			oLex = head + " " + child;
-
-			fv = add("SA=" + all + attDist, 1.0, fv); // this
-			fv = add("SF=" + oLex + attDist, 1.0, fv); // this
-			fv = add("SAA=" + all, 1.0, fv); // this
-			fv = add("SFF=" + oLex, 1.0, fv); // this
-
-			if (cL > 5) {
-				fv = add("SB=" + hPos + attDist, 1.0, fv);
-				fv = add("SD=" + hP + attDist, 1.0, fv);
-				fv = add("SK=" + child + " " + childP + attDist, 1.0, fv);
-				fv = add("SM=" + child + attDist, 1.0, fv); // this
-				fv = add("SBB=" + hPos, 1.0, fv);
-				fv = add("SDD=" + hP, 1.0, fv);
-				fv = add("SKK=" + child + " " + childP, 1.0, fv);
-				fv = add("SMM=" + child, 1.0, fv); // this
-			}
-			if (hL > 5) {
-				fv = add("SC=" + cPos + attDist, 1.0, fv);
-				fv = add("SE=" + cP + attDist, 1.0, fv);
-				fv = add("SH=" + head + " " + headP + attDist, 1.0, fv);
-				fv = add("SJ=" + head + attDist, 1.0, fv); // this
-
-				fv = add("SCC=" + cPos, 1.0, fv);
-				fv = add("SEE=" + cP, 1.0, fv);
-				fv = add("SHH=" + head + " " + headP, 1.0, fv);
-				fv = add("SJJ=" + head, 1.0, fv); // this
-			}
-		}
-
-		return fv;
+	for(int i = first+1; i < second; i++) {
+	    String allPos = featPos.toString() + ' ' + obsVals[i];
+	    add(allPos, fv);
+	    add(allPos+attachDistance, fv);
 
 	}
 
-	public FeatureVector createFeatureVector(String[] toks, String[] pos,
-			String[] posA, int word, String type, boolean attR,
-			boolean childFeatures, FeatureVector fv) {
+	addCorePosFeatures(type+"PT", pLeft, obsVals[first], pLeftRight, 
+				pRightLeft, obsVals[second], pRight, attachDistance, fv);
 
-		if (!labeled)
-			return fv;
+    }
 
-		String att = "";
-		if (attR)
-			att = "RA";
-		else
-			att = "LA";
 
-		att += "&" + childFeatures;
+    private final void 
+	addCorePosFeatures(String prefix,
+			   String leftOf1, String one, String rightOf1, 
+			   String leftOf2, String two, String rightOf2, 
+			   String attachDistance, 
+			   FeatureVector fv) {
 
-		String w = toks[word];
-		String wP = pos[word];
+	// feature posL-1 posL posR posR+1
 
-		String wPm1 = word > 0 ? pos[word - 1] : "STR";
-		String wPp1 = word < pos.length - 1 ? pos[word + 1] : "END";
+	add(prefix+"="+leftOf1+" "+one+" "+two+"*"+attachDistance, fv);
 
-		fv = add("NTS1=" + type + "&" + att, 1.0, fv);
-		fv = add("ANTS1=" + type, 1.0, fv);
-		for (int i = 0; i < 2; i++) {
-			String suff = i < 1 ? "&" + att : "";
-			suff = "&" + type + suff;
+	StringBuilder feat = 
+	    new StringBuilder(prefix+"1="+leftOf1+" "+one+" "+two);
+	add(feat.toString(), fv);
+	feat.append(' ').append(rightOf2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-			fv = add("NTH=" + w + " " + wP + suff, 1.0, fv);
-			fv = add("NTI=" + wP + suff, 1.0, fv);
-			fv = add("NTIA=" + wPm1 + " " + wP + suff, 1.0, fv);
-			fv = add("NTIB=" + wP + " " + wPp1 + suff, 1.0, fv);
-			fv = add("NTIC=" + wPm1 + " " + wP + " " + wPp1 + suff, 1.0, fv);
-			fv = add("NTJ=" + w + suff, 1.0, fv); // this
+	feat = new StringBuilder(prefix+"2="+leftOf1+" "+two+" "+rightOf2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
+	
+	feat = new StringBuilder(prefix+"3="+leftOf1+" "+one+" "+rightOf2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
+	
+	feat = new StringBuilder(prefix+"4="+one+" "+two+" "+rightOf2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-		}
+	/////////////////////////////////////////////////////////////
+	prefix = "A"+prefix;
 
-		return fv;
-	}
+	// feature posL posL+1 posR-1 posR
+	add(prefix+"1="+one+" "+rightOf1+" "+leftOf2+"*"+attachDistance, fv);
 
-	public FeatureVector createFeatureVector(String[] toks, String[] pos,
-			String[] labs, int[] deps) {
+	feat = new StringBuilder(prefix+"1="+one+" "+rightOf1+" "+leftOf2);
+	add(feat.toString(), fv);
+	feat.append(' ').append(two);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-		String[] posA = new String[pos.length];
-		for (int i = 0; i < pos.length; i++) {
-			posA[i] = pos[i].substring(0, 1);
-		}
+	feat = new StringBuilder(prefix+"2="+one+" "+rightOf1+" "+two);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
+	
+	feat = new StringBuilder(prefix+"3="+one+" "+leftOf2+" "+two);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
+	
+	feat = new StringBuilder(prefix+"4="+rightOf1+" "+leftOf2+" "+two);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-		FeatureVector fv = new FeatureVector(-1, -1.0, null);
-		for (int i = 0; i < toks.length; i++) {
-			if (deps[i] == -1)
-				continue;
-			int small = i < deps[i] ? i : deps[i];
-			int large = i > deps[i] ? i : deps[i];
-			boolean attR = i < deps[i] ? false : true;
-			fv = createFeatureVector(toks, pos, posA, small, large, attR, fv);
-			if (labeled) {
-				fv = createFeatureVector(toks, pos, posA, i, labs[i], attR, true, fv);
-				fv = createFeatureVector(toks, pos, posA, deps[i], labs[i], attR, false, fv);
-			}
-		}
-		return fv;
-	}
+	///////////////////////////////////////////////////////////////
+	prefix = "B"+prefix;
 
-	/**
-	 * Add feature with value to the feature vector.
-	 * @param feature
-	 * @param value
-	 * @param fv
-	 * @return
-	 */
-	public FeatureVector add(String feature, double value, FeatureVector fv) {
-		int num = dataAlphabet.lookupIndex(feature);
-		if (num >= 0)
-			return new FeatureVector(num, value, fv);
-		return fv;
-	}
+	//// feature posL-1 posL posR-1 posR
+	feat = new StringBuilder(prefix+"1="+leftOf1+" "+one+" "+leftOf2+" "+two);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-	public void possibleFeatures(DependencyInstance inst, ObjectOutputStream out) {
-		String[] toks = inst.sentence;
-		String[] pos = inst.pos;
-	//	String[] labs = inst.labs;
+	//// feature posL posL+1 posR posR+1
+	feat = new StringBuilder(prefix+"2="+one+" "+rightOf1+" "+two+" "+rightOf2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-		String[] posA = new String[pos.length];
-		for (int i = 0; i < pos.length; i++) {
-			posA[i] = pos[i].substring(0, 1);
-		}
+    }
 
-		try {
 
-			for (int w1 = 0; w1 < toks.length; w1++) {
-				for (int w2 = w1 + 1; w2 < toks.length; w2++) {
 
-					for (int ph = 0; ph < 2; ph++) {
-						boolean attR = ph == 0 ? true : false;
+    /**
+     * Add features for two items, each with two observations, e.g. head,
+     * head pos, child, and child pos.
+     *
+     * The use of StringBuilders is not yet as efficient as it could
+     * be, but this is a start. (And it abstracts the logic so we can
+     * add other features more easily based on other items and
+     * observations.)
+     **/
+    private final void addTwoObsFeatures(String prefix, 
+					 String item1F1, String item1F2, 
+					 String item2F1, String item2F2, 
+					 String attachDistance,
+					 FeatureVector fv) {
 
-						//int childInt = attR ? w2 : w1;
-						//int parInt = attR ? w1 : w2;
+	StringBuilder feat = new StringBuilder(prefix+"2FF1="+item1F1);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
+	
+	feat = new StringBuilder(prefix+"2FF1="+item1F1+" "+item1F2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-						FeatureVector prodFV = createFeatureVector(toks, pos,
-								posA, w1, w2, attR, new FeatureVector(-1, -1.0, null));
+	feat = new StringBuilder(prefix+"2FF1="+item1F1+" "+item1F2+" "+item2F2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-						for (FeatureVector curr = prodFV; curr != null; curr = curr.next) {
-							if (curr.index >= 0)
-								out.writeInt(curr.index);
-						}
-						out.writeInt(-2);
+	feat = new StringBuilder(prefix+"2FF1="+item1F1+" "+item1F2+" "+item2F2+" "+item2F1);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
+	
+	feat = new StringBuilder(prefix+"2FF2="+item1F1+" "+item2F1);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-					}
-				}
+	feat = new StringBuilder(prefix+"2FF3="+item1F1+" "+item2F2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-			}
 
-			out.writeInt(-3);
+	feat = new StringBuilder(prefix+"2FF4="+item1F2+" "+item2F1);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-			if (labeled) {
-				for (int w1 = 0; w1 < toks.length; w1++) {
+	feat = new StringBuilder(prefix+"2FF4="+item1F2+" "+item2F1+" "+item2F2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-					for (int t = 0; t < types.length; t++) {
-						String type = types[t];
+	feat = new StringBuilder(prefix+"2FF5="+item1F2+" "+item2F2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-						for (int ph = 0; ph < 2; ph++) {
-							boolean attR = ph == 0 ? true : false;
+	feat = new StringBuilder(prefix+"2FF6="+item2F1+" "+item2F2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
 
-							for (int ch = 0; ch < 2; ch++) {
-								boolean child = ch == 0 ? true : false;
+	feat = new StringBuilder(prefix+"2FF7="+item1F2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
+	
+	feat = new StringBuilder(prefix+"2FF8="+item2F1);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
+	
+	feat = new StringBuilder(prefix+"2FF9="+item2F2);
+	add(feat.toString(), fv);
+	feat.append('*').append(attachDistance);
+	add(feat.toString(), fv);
+	
+    }
 
-								FeatureVector prodFV = createFeatureVector(
-										toks, pos, posA, w1, type, attR, child,
-										new FeatureVector(-1, -1.0, null));
+    public void addLabeledFeatures(DependencyInstance instance,
+				   int word,
+				   String type,
+				   boolean attR,
+				   boolean childFeatures,
+				   FeatureVector fv) {
+		
+	if(!labeled) 
+	    return;
 
-								for (FeatureVector curr = prodFV; curr != null; curr = curr.next) {
-									if (curr.index >= 0)
-										out.writeInt(curr.index);
-								}
-								out.writeInt(-2);
+	String[] forms = instance.forms;
+	String[] pos = instance.postags;
+	    
+	String att = "";
+	if(attR)
+	    att = "RA";
+	else
+	    att = "LA";
 
-							}
-						}
-					}
+	att+="&"+childFeatures;
+		
+	String w = forms[word];
+	String wP = pos[word];
 
-				}
+	String wPm1 = word > 0 ? pos[word-1] : "STR";
+	String wPp1 = word < pos.length-1 ? pos[word+1] : "END";
 
-				out.writeInt(-3);
-			}
+	add("NTS1="+type+"&"+att,fv);
+	add("ANTS1="+type,fv);
+	for(int i = 0; i < 2; i++) {
+	    String suff = i < 1 ? "&"+att : "";
+	    suff = "&"+type+suff;
 
-			for (FeatureVector curr = inst.fv; curr.next != null; curr = curr.next)
-				out.writeInt(curr.index);
-
-			out.writeInt(-4);
-			out.writeObject(inst.sentence);
-			out.writeInt(-5);
-			out.writeObject(inst.pos);
-			out.writeInt(-6);
-			out.writeObject(inst.labs);
-			out.writeInt(-7);
-			out.writeObject(inst.actParseTree);
-
-			out.writeInt(-1);
-			out.reset();
-
-		} catch (IOException e) {
-		}
-
-	}
-
-	public DependencyInstance getFeatureVector(ObjectInputStream in,
-			DependencyInstance inst, FeatureVector[][][] fvs,
-			double[][][] probs, FeatureVector[][][][] nt_fvs,
-			double[][][][] nt_probs, Parameters params) throws IOException {
-		int length = inst.length;
-
-		// Get production crap.
-		for (int w1 = 0; w1 < length; w1++) {
-			for (int w2 = w1 + 1; w2 < length; w2++) {
-
-				for (int ph = 0; ph < 2; ph++) {
-
-					FeatureVector prodFV = new FeatureVector(-1, -1.0, null);
-
-					int indx = in.readInt();
-					while (indx != -2) {
-						prodFV = new FeatureVector(indx, 1.0, prodFV);
-						indx = in.readInt();
-					}
-
-					double prodProb = params.getScore(prodFV);
-					fvs[w1][w2][ph] = prodFV;
-					probs[w1][w2][ph] = prodProb;
-				}
-			}
-
-		}
-		int last = in.readInt();
-		if (last != -3) {
-			System.out.println("Error reading file.");
-			System.exit(0);
-		}
-
-		if (labeled) {
-			for (int w1 = 0; w1 < length; w1++) {
-
-				for (int t = 0; t < types.length; t++) {
-					//String type = types[t];
-
-					for (int ph = 0; ph < 2; ph++) {
-
-						for (int ch = 0; ch < 2; ch++) {
-
-							FeatureVector prodFV = new FeatureVector(-1, -1.0,
-									null);
-
-							int indx = in.readInt();
-							while (indx != -2) {
-								prodFV = new FeatureVector(indx, 1.0, prodFV);
-								indx = in.readInt();
-							}
-
-							double nt_prob = params.getScore(prodFV);
-							nt_fvs[w1][t][ph][ch] = prodFV;
-							nt_probs[w1][t][ph][ch] = nt_prob;
-
-						}
-					}
-				}
-
-			}
-			last = in.readInt();
-			if (last != -3) {
-				System.out.println("Error reading file.");
-				System.exit(0);
-			}
-		}
-
-		FeatureVector nfv = new FeatureVector(-1, -1.0, null);
-		int next = in.readInt();
-		while (next != -4) {
-			nfv = new FeatureVector(next, 1.0, nfv);
-			next = in.readInt();
-		}
-
-		String[] toks = null;
-		String[] pos = null;
-		String[] labs = null;
-		String actParseTree = null;
-		try {
-			toks = (String[]) in.readObject();
-			next = in.readInt();
-			pos = (String[]) in.readObject();
-			next = in.readInt();
-			labs = (String[]) in.readObject();
-			next = in.readInt();
-			actParseTree = (String) in.readObject();
-			next = in.readInt();
-		} catch (ClassNotFoundException e) {
-			System.out.println("Error reading file.");
-			System.exit(0);
-		}
-
-		if (next != -1) {
-			System.out.println("Error reading file.");
-			System.exit(0);
-		}
-
-		DependencyInstance pti = new DependencyInstance(toks, pos, labs, nfv);
-		pti.actParseTree = actParseTree;
-		return pti;
+	    add("NTH="+w+" "+wP+suff,fv);
+	    add("NTI="+wP+suff,fv);
+	    add("NTIA="+wPm1+" "+wP+suff,fv);
+	    add("NTIB="+wP+" "+wPp1+suff,fv);
+	    add("NTIC="+wPm1+" "+wP+" "+wPp1+suff,fv);
+	    add("NTJ="+w+suff,fv); //this
 
 	}
+    }
 
-	public void getFeatureVector(DependencyInstance inst,
-			FeatureVector[][][] fvs, double[][][] probs,
-			FeatureVector[][][][] nt_fvs, double[][][][] nt_probs,
-			Parameters params) {
 
-		String[] toks = inst.sentence;
-		String[] pos = inst.pos;
-	//	String[] labs = inst.labs;
-
-		String[] posA = new String[pos.length];
-		for (int i = 0; i < pos.length; i++) {
-			posA[i] = pos[i].substring(0, 1);
+    private void addDiscourseFeatures (DependencyInstance instance, 
+				       int small,
+				       int large,
+				       int headIndex,
+				       int childIndex,
+				       String attDist,
+				       FeatureVector fv) {
+    
+	addLinearFeatures("FORM", instance.forms, small, large, attDist, fv);
+	addLinearFeatures("LEMMA", instance.lemmas, small, large, attDist, fv);
+	
+	addTwoObsFeatures("HCB1", instance.forms[headIndex], 
+			  instance.lemmas[headIndex],
+			  instance.forms[childIndex], 
+			  instance.lemmas[childIndex], 
+			  attDist, fv);
+	
+	addTwoObsFeatures("HCB2", instance.forms[headIndex], 
+			  instance.lemmas[headIndex],
+			  instance.forms[childIndex], 
+			  instance.postags[childIndex], 
+			  attDist, fv);
+	
+	addTwoObsFeatures("HCB3", instance.forms[headIndex], 
+			  instance.lemmas[headIndex],
+			  instance.forms[childIndex], 
+			  instance.cpostags[childIndex], 
+			  attDist, fv);
+	
+	addTwoObsFeatures("HC2", instance.forms[headIndex], 
+			  instance.postags[headIndex], 
+			  instance.forms[childIndex], 
+			  instance.cpostags[childIndex], attDist, fv);
+	
+	addTwoObsFeatures("HCC2", instance.lemmas[headIndex], 
+			  instance.postags[headIndex], 
+			  instance.lemmas[childIndex], 
+			  instance.cpostags[childIndex], 
+			  attDist, fv);
+	
+	
+	//// Use this if your extra feature lists all have the same length.
+	for (int i=0; i<instance.feats.length; i++) {
+	
+		addLinearFeatures("F"+i, instance.feats[i], small, large, attDist, fv);
+	
+		addTwoObsFeatures("FF"+i, 
+				  instance.forms[headIndex], 
+				  instance.feats[i][headIndex],
+				  instance.forms[childIndex], 
+				  instance.feats[i][childIndex],
+				  attDist, fv);
+		
+		addTwoObsFeatures("LF"+i, 
+				  instance.lemmas[headIndex], 
+				  instance.feats[i][headIndex],
+				  instance.lemmas[childIndex], 
+				  instance.feats[i][childIndex],
+				  attDist, fv);
+		
+		addTwoObsFeatures("PF"+i, 
+				  instance.postags[headIndex], 
+				  instance.feats[i][headIndex],
+				  instance.postags[childIndex], 
+				  instance.feats[i][childIndex],
+				  attDist, fv);
+		
+		addTwoObsFeatures("CPF"+i, 
+				  instance.cpostags[headIndex], 
+				  instance.feats[i][headIndex],
+				  instance.cpostags[childIndex], 
+				  instance.feats[i][childIndex],
+				  attDist, fv);
+		
+		
+		for (int j=i+1; j<instance.feats.length; j++) {
+		
+		    addTwoObsFeatures("CPF"+i+"_"+j, 
+				      instance.feats[i][headIndex],
+				      instance.feats[j][headIndex],
+				      instance.feats[i][childIndex],
+				      instance.feats[j][childIndex],
+				      attDist, fv);
+		
 		}
-
-		// Get production crap.
-		for (int w1 = 0; w1 < toks.length; w1++) {
-			for (int w2 = w1 + 1; w2 < toks.length; w2++) {
-
-				for (int ph = 0; ph < 2; ph++) {
-					boolean attR = ph == 0 ? true : false;
-
-				//	int childInt = attR ? w2 : w1;
-				//	int parInt = attR ? w1 : w2;
-
-					FeatureVector prodFV = createFeatureVector(toks, pos, posA,
-							w1, w2, attR, new FeatureVector(-1, -1.0, null));
-
-					double prodProb = params.getScore(prodFV);
-					fvs[w1][w2][ph] = prodFV;
-					probs[w1][w2][ph] = prodProb;
-				}
-			}
-
+	
+		for (int j=0; j<instance.feats.length; j++) {
+	
+		    addTwoObsFeatures("XFF"+i+"_"+j, 
+				      instance.forms[headIndex],
+				      instance.feats[i][headIndex],
+				      instance.forms[childIndex],
+				      instance.feats[j][childIndex],
+				      attDist, fv);
+	
+		    addTwoObsFeatures("XLF"+i+"_"+j, 
+				      instance.lemmas[headIndex],
+				      instance.feats[i][headIndex],
+				      instance.lemmas[childIndex],
+				      instance.feats[j][childIndex],
+				      attDist, fv);
+	
+		    addTwoObsFeatures("XPF"+i+"_"+j, 
+				      instance.postags[headIndex],
+				      instance.feats[i][headIndex],
+				      instance.postags[childIndex],
+				      instance.feats[j][childIndex],
+				      attDist, fv);
+	
+	
+		    addTwoObsFeatures("XCF"+i+"_"+j, 
+				      instance.cpostags[headIndex],
+				      instance.feats[i][headIndex],
+				      instance.cpostags[childIndex],
+				      instance.feats[j][childIndex],
+				      attDist, fv);
+	
+	
 		}
-
-		if (labeled) {
-			for (int w1 = 0; w1 < toks.length; w1++) {
-
-				for (int t = 0; t < types.length; t++) {
-					String type = types[t];
-
-					for (int ph = 0; ph < 2; ph++) {
-						boolean attR = ph == 0 ? true : false;
-
-						for (int ch = 0; ch < 2; ch++) {
-							boolean child = ch == 0 ? true : false;
-
-							FeatureVector prodFV = createFeatureVector(toks,
-									pos, posA, w1, type, attR, child,
-									new FeatureVector(-1, -1.0, null));
-
-							double nt_prob = params.getScore(prodFV);
-							nt_fvs[w1][t][ph][ch] = prodFV;
-							nt_probs[w1][t][ph][ch] = nt_prob;
-
-						}
-					}
-				}
-
-			}
-		}
+	
 	}
 
+
+	// Test out relational features
+	if (options.useRelationalFeatures) {
+
+	    //for (int rf_index=0; rf_index<2; rf_index++) {
+	    for (int rf_index=0; 
+		 rf_index<instance.relFeats.length; 
+		 rf_index++) {
+		
+		String headToChild = 
+		    "H2C"+rf_index+instance.relFeats[rf_index].getFeature(headIndex, childIndex);
+	    
+		addTwoObsFeatures("RFA1",
+				  instance.forms[headIndex], 
+				  instance.lemmas[headIndex],
+				  instance.postags[childIndex],
+				  headToChild,
+				  attDist, fv);
+		
+		addTwoObsFeatures("RFA2",
+				  instance.postags[headIndex], 
+				  instance.cpostags[headIndex],
+				  instance.forms[childIndex],
+				  headToChild,
+				  attDist, fv);
+	    
+	    	addTwoObsFeatures("RFA3",
+				  instance.lemmas[headIndex], 
+				  instance.postags[headIndex],
+				  instance.forms[childIndex],
+				  headToChild,
+				  attDist, fv);
+	    	
+	    	addTwoObsFeatures("RFB1",
+				  headToChild,
+				  instance.postags[headIndex],
+				  instance.forms[childIndex], 
+				  instance.lemmas[childIndex],
+				  attDist, fv);
+	    	
+	    	addTwoObsFeatures("RFB2",
+				  headToChild,
+				  instance.forms[headIndex],
+				  instance.postags[childIndex], 
+				  instance.cpostags[childIndex],
+				  attDist, fv);
+	    	
+	    	addTwoObsFeatures("RFB3",
+				  headToChild,
+				  instance.forms[headIndex],
+				  instance.lemmas[childIndex], 
+				  instance.postags[childIndex],
+				  attDist, fv);
+		
+	    }
+	}
+    }
+
+
+    public void fillFeatureVectors(DependencyInstance instance,
+				   FeatureVector[][][] fvs,
+				   double[][][] probs,
+				   FeatureVector[][][][] nt_fvs,
+				   double[][][][] nt_probs, Parameters params) {
+
+	final int instanceLength = instance.length();
+
+	// Get production crap.		
+	for(int w1 = 0; w1 < instanceLength; w1++) {
+	    for(int w2 = w1+1; w2 < instanceLength; w2++) {
+		for(int ph = 0; ph < 2; ph++) {
+		    boolean attR = ph == 0 ? true : false;
+		    
+		    int childInt = attR ? w2 : w1;
+		    int parInt = attR ? w1 : w2;
+		    
+		    FeatureVector prodFV = new FeatureVector();
+		    addCoreFeatures(instance,w1,w2,attR, prodFV)
+;
+		    double prodProb = params.getScore(prodFV);
+		    fvs[w1][w2][ph] = prodFV;
+		    probs[w1][w2][ph] = prodProb;
+		}
+	    }
+	}
+
+	if(labeled) {
+	    for(int w1 = 0; w1 < instanceLength; w1++) {
+		for(int t = 0; t < types.length; t++) {
+		    String type = types[t];
+		    for(int ph = 0; ph < 2; ph++) {
+
+			boolean attR = ph == 0 ? true : false;
+			for(int ch = 0; ch < 2; ch++) {
+
+			    boolean child = ch == 0 ? true : false;
+
+			    FeatureVector prodFV = new FeatureVector();
+			    addLabeledFeatures(instance,w1,
+					       type,attR,child, prodFV);
+			    
+			    double nt_prob = params.getScore(prodFV);
+			    nt_fvs[w1][t][ph][ch] = prodFV;
+			    nt_probs[w1][t][ph][ch] = nt_prob;
+			    
+			}
+		    }
+		}
+	    }
+	}		
+    }
+
+
+    /**
+     * Write an instance to an output stream for later reading.
+     *
+     **/
+    protected void writeInstance(DependencyInstance instance, ObjectOutputStream out) {
+
+	int instanceLength = instance.length();
+
+	try {
+
+	    for(int w1 = 0; w1 < instanceLength; w1++) {
+		for(int w2 = w1+1; w2 < instanceLength; w2++) {
+		    for(int ph = 0; ph < 2; ph++) {
+			boolean attR = ph == 0 ? true : false;
+			FeatureVector prodFV = new FeatureVector();
+			addCoreFeatures(instance,w1,w2,attR,prodFV);
+			out.writeObject(prodFV.keys());
+		    }
+		}
+	    }
+	    out.writeInt(-3);
+
+	    if(labeled) {
+		for(int w1 = 0; w1 < instanceLength; w1++) {		    
+		    for(int t = 0; t < types.length; t++) {
+			String type = types[t];			
+			for(int ph = 0; ph < 2; ph++) {
+			    boolean attR = ph == 0 ? true : false;
+			    for(int ch = 0; ch < 2; ch++) {
+				boolean child = ch == 0 ? true : false;
+				FeatureVector prodFV = new FeatureVector();
+				addLabeledFeatures(instance,w1,
+						   type, attR,child,prodFV);
+				out.writeObject(prodFV.keys());
+			    }
+			}
+		    }
+		}
+		out.writeInt(-3);
+	    }
+
+	    writeExtendedFeatures(instance, out);
+
+	    out.writeObject(instance.fv.keys());
+	    out.writeInt(-4);
+
+	    out.writeObject(instance);
+	    out.writeInt(-1);
+
+	    out.reset();
+
+	} catch (IOException e) {}
+		
+    }
+	
+
+    /**
+     * Override this method if you have extra features that need to be
+     * written to disk. For the basic DependencyPipe, nothing happens.
+     *
+     */
+    protected void writeExtendedFeatures (DependencyInstance instance, ObjectOutputStream out) 
+	throws IOException {}
+
+
+    /**
+     * Read an instance from an input stream.
+     *
+     **/
+    public DependencyInstance readInstance(ObjectInputStream in,
+					   int length,
+					   FeatureVector[][][] fvs,
+					   double[][][] probs,
+					   FeatureVector[][][][] nt_fvs,
+					   double[][][][] nt_probs,
+					   Parameters params) throws IOException {
+
+	try {
+
+	    // Get production crap.		
+	    for(int w1 = 0; w1 < length; w1++) {
+		for(int w2 = w1+1; w2 < length; w2++) {
+		    for(int ph = 0; ph < 2; ph++) {
+			FeatureVector prodFV = new FeatureVector((int[])in.readObject());
+			double prodProb = params.getScore(prodFV);
+			fvs[w1][w2][ph] = prodFV;
+			probs[w1][w2][ph] = prodProb;
+		    }
+		}
+	    }
+	    int last = in.readInt();
+	    if(last != -3) { System.out.println("Error reading file."); System.exit(0); }
+	    
+	    if(labeled) {
+		for(int w1 = 0; w1 < length; w1++) {
+		    for(int t = 0; t < types.length; t++) {
+			String type = types[t];
+			
+			for(int ph = 0; ph < 2; ph++) {						
+			    for(int ch = 0; ch < 2; ch++) {
+				FeatureVector prodFV = new FeatureVector((int[])in.readObject());
+				double nt_prob = params.getScore(prodFV);
+				nt_fvs[w1][t][ph][ch] = prodFV;
+				nt_probs[w1][t][ph][ch] = nt_prob;
+			    }
+			}
+		    }
+		}
+		last = in.readInt();
+		if(last != -3) { System.out.println("Error reading file."); System.exit(0); }
+	    }
+
+	    FeatureVector nfv = new FeatureVector((int[])in.readObject());
+	    last = in.readInt();
+	    if(last != -4) { System.out.println("Error reading file."); System.exit(0); }
+
+	    DependencyInstance marshalledDI;
+	    marshalledDI = (DependencyInstance)in.readObject();
+	    marshalledDI.setFeatureVector(nfv);	
+
+	    last = in.readInt();
+	    if(last != -1) { System.out.println("Error reading file."); System.exit(0); }
+
+	    return marshalledDI;
+
+	} catch(ClassNotFoundException e) { 
+	    System.out.println("Error reading file."); System.exit(0); 
+	} 
+
+	// this won't happen, but it takes care of compilation complaints
+	return null;
+    }
+		
+    /**
+     * Get features for stems the old way. The only way this differs
+     * from calling addTwoObsFeatures() is that it checks the
+     * lengths of the full lexical items are greater than 5 before
+     * adding features.
+     *
+     */
+    private final void
+	addOldMSTStemFeatures(String hLemma, String headP, 
+			      String cLemma, String childP, String attDist, 
+			      int hL, int cL, FeatureVector fv) {
+
+	String all = hLemma + " " + headP + " " + cLemma + " " + childP;
+	String hPos = headP + " " + cLemma + " " + childP;
+	String cPos = hLemma + " " + headP + " " + childP;
+	String hP = headP + " " + cLemma;
+	String cP = hLemma + " " + childP;
+	String oPos = headP + " " + childP;
+	String oLex = hLemma + " " + cLemma;
+	
+	add("SA="+all+attDist,fv); //this
+	add("SF="+oLex+attDist,fv); //this
+	add("SAA="+all,fv); //this
+	add("SFF="+oLex,fv); //this
+	
+	if(cL > 5) {
+	    add("SB="+hPos+attDist,fv);
+	    add("SD="+hP+attDist,fv);
+	    add("SK="+cLemma+" "+childP+attDist,fv);
+	    add("SM="+cLemma+attDist,fv); //this
+	    add("SBB="+hPos,fv);
+	    add("SDD="+hP,fv);
+	    add("SKK="+cLemma+" "+childP,fv);
+	    add("SMM="+cLemma,fv); //this
+	}
+	if(hL > 5) {
+	    add("SC="+cPos+attDist,fv);
+	    add("SE="+cP+attDist,fv);
+	    add("SH="+hLemma+" "+headP+attDist,fv);
+	    add("SJ="+hLemma+attDist,fv); //this
+	    
+	    add("SCC="+cPos,fv);
+	    add("SEE="+cP,fv);
+	    add("SHH="+hLemma+" "+headP,fv);
+	    add("SJJ="+hLemma,fv); //this
+	}
+
+    }
+		
 }

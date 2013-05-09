@@ -1,113 +1,89 @@
 package mstparser;
 
 import java.io.*;
-
-/**
- * Unlabeled Accuracy: accuracy of words, unlabeled
- * Unlabeled Complete Correct: accuracy of sentences, unlabeled
- * Labeled Accuracy: accuracy of words, labeled
- * Labeled Complete Correct: accuracy of sentences, labeled
- *
- *
- */
+import mstparser.io.*;
 
 public class DependencyEvaluator {
+	
+    public static void evaluate (String act_file, 
+				 String pred_file, 
+				 String format) throws IOException {
+	
+	DependencyReader goldReader = DependencyReader.createDependencyReader(format);
+	boolean labeled = goldReader.startReading(act_file);
 
-	public static void evaluate(String actual_file, String predicted_file)
-			throws IOException {
-		boolean labeled = false;
-		BufferedReader actual_in = new BufferedReader(new FileReader(actual_file));
-		actual_in.readLine();
-		actual_in.readLine();
-		actual_in.readLine();
-		String l = actual_in.readLine();
-		if (l.trim().length() > 0)
-			labeled = true;
+	DependencyReader predictedReader = DependencyReader.createDependencyReader(format);
+	boolean predLabeled = predictedReader.startReading(pred_file);
 
-		int total = 0;
-		int correct = 0;
-		int correctL = 0;
-		int numsent = 0;
-		int corrsent = 0;
-		int corrsentLabel = 0;
+	if (labeled != predLabeled)
+	    System.out.println("Gold file and predicted file appear to differ on whether or not they are labeled. Expect problems!!!");
 
-		actual_in = new BufferedReader(new FileReader(actual_file));
-		BufferedReader predicted_in = new BufferedReader(new FileReader(predicted_file));
 
-		actual_in.readLine();
-		//String[] pos = act_in.readLine().split("\t");
-		predicted_in.readLine();
-		predicted_in.readLine();
-		String actual_lab = labeled ? actual_in.readLine().trim() : "";
-		String actual_dep = actual_in.readLine().trim();
-		String predicted_lab = labeled ? predicted_in.readLine().trim() : "";
-		String predicted_dep = predicted_in.readLine().trim();
-		actual_in.readLine();
-		predicted_in.readLine();
+	int total = 0; int corr = 0; int corrL = 0;
+	int numsent = 0; int corrsent = 0; int corrsentL = 0;
+	int root_act = 0; int root_guess = 0; int root_corr = 0;
 
-		while (actual_dep != null) {
+	DependencyInstance goldInstance = goldReader.getNext();
+	DependencyInstance predInstance = predictedReader.getNext();
 
-			String[] actual_labels = null;
-			String[] predicted_labels = null;
-			if (labeled) {
-				actual_labels = actual_lab.split("\t");
-				predicted_labels = predicted_lab.split("\t");
-			}
-			String[] actual_deps = actual_dep.split("\t");
-			String[] predicted_deps = predicted_dep.split("\t");
-			if (actual_deps.length != predicted_deps.length)
-				System.out.println("Lengths do not match");
+	while(goldInstance != null) {
 
-			boolean whole = true;
-			boolean wholeLabel = true;
+	    int instanceLength = goldInstance.length();
 
-			for (int i = 0; i < actual_deps.length; i++) {
-				if (predicted_deps[i].equals(actual_deps[i])) {
-					correct++;
-					if (labeled) {
-						if (actual_labels[i].equals(predicted_labels[i]))
-							correctL++;
-						else
-							wholeLabel = false;
-					}
-				} else {
-					whole = false;
-					wholeLabel = false;
-				}
-			}
-			total += actual_deps.length;
+	    if (instanceLength != predInstance.length())
+		System.out.println("Lengths do not match on sentence "+numsent);
 
-			if (whole)
-				corrsent++;
-			if (wholeLabel)
-				corrsentLabel++;
-			numsent++;
+	    int[] goldHeads = goldInstance.heads;
+	    String[] goldLabels = goldInstance.deprels;
+	    int[] predHeads = predInstance.heads;
+	    String[] predLabels = predInstance.deprels;
 
-			actual_in.readLine();
-//			try {
-//				pos = act_in.readLine().split("\t");
-//			} catch (Exception e) {
-//			}
-			predicted_in.readLine();
-			predicted_in.readLine();
-			actual_lab = labeled ? actual_in.readLine() : "";
-			actual_dep = actual_in.readLine();
-			predicted_lab = labeled ? predicted_in.readLine() : "";
-			predicted_dep = predicted_in.readLine();
-			actual_in.readLine();
-			predicted_in.readLine();
+	    boolean whole = true;
+	    boolean wholeL = true;
+
+	    // NOTE: the first item is the root info added during nextInstance(), so we skip it.
+
+	    for (int i = 1; i < instanceLength; i++) {
+		if (predHeads[i] == goldHeads[i]) {
+		    corr++;
+		    if (labeled) {
+			if (goldLabels[i].equals(predLabels[i])) 
+			    corrL++;
+			else 
+			    wholeL = false;
+		    }
 		}
-
-		System.out.println("Tokens: " + total);
-		System.out.println("Correct: " + correct);
-		System.out.println("Unlabeled Accuracy: " + ((double) correct / total));
-		System.out.println("Unlabeled Complete Correct: "
-				+ ((double) corrsent / numsent));
-		if (labeled) {
-			System.out.println("Labeled Accuracy: " + ((double) correctL / total));
-			System.out.println("Labeled Complete Correct: "
-					+ ((double) corrsentLabel / numsent));
+		else { 
+		    whole = false; wholeL = false; 
 		}
+	    }
+	    total += instanceLength - 1; // Subtract one to not score fake root token
 
+	    if(whole) corrsent++;
+	    if(wholeL) corrsentL++;
+	    numsent++;
+						
+	    goldInstance = goldReader.getNext();
+	    predInstance = predictedReader.getNext();
 	}
+
+	System.out.println("Tokens: " + total);
+	System.out.println("Correct: " + corr);
+	System.out.println("Unlabeled Accuracy: " + ((double)corr/total));
+	System.out.println("Unlabeled Complete Correct: " + ((double)corrsent/numsent));
+	if(labeled) {
+	    System.out.println("Labeled Accuracy: " + ((double)corrL/total));
+	    System.out.println("Labeled Complete Correct: " + ((double)corrsentL/numsent));
+	}
+		
+    }
+
+    public static void main (String[] args) throws IOException {
+	String format = "CONLL";
+	if (args.length > 2)
+	    format = args[2];
+
+	evaluate(args[0], args[1], format);
+    }
+
 }
