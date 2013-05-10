@@ -1,9 +1,7 @@
 package mstparser;
 
-import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.StringTokenizer;
 import gnu.trove.*;
 
 public class DependencyDecoder {
@@ -48,7 +46,6 @@ public class DependencyDecoder {
 			FeatureVector[][][][] nt_fvs, double[][][][] nt_probs, int K) {
 
 		String[] forms = inst.forms;
-		String[] pos = inst.postags;
 
 		int[][] static_types = null;
 		if (pipe.labeled) {
@@ -82,8 +79,6 @@ public class DependencyDecoder {
 				double nt_prob_s_10 = nt_probs[s][type2][1][0];
 				double nt_prob_t_00 = nt_probs[t][type1][0][0];
 				double nt_prob_t_11 = nt_probs[t][type2][1][1];
-
-				double prodProb = 0.0;
 
 				for (int r = s; r <= t; r++) {
 
@@ -412,7 +407,7 @@ public class DependencyDecoder {
 		}
 
 		// Find a cycle
-		ArrayList cycles = new ArrayList();
+		ArrayList<TIntIntHashMap> cycles = new ArrayList<TIntIntHashMap>();
 		boolean[] added = new boolean[numWords];
 		for (int i = 0; i < numWords && cycles.size() == 0; i++) {
 			// if I have already considered this or

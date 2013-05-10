@@ -31,7 +31,7 @@ public abstract class DependencyReader {
 	protected boolean labeled = true;
 
 	public static DependencyReader createDependencyReader(String format,
-			boolean discourseMode) throws IOException {
+			boolean discourseMode, boolean voting) throws IOException {
 
 		if (format.equals("MST")) {
 			return new MSTReader();
@@ -47,7 +47,7 @@ public abstract class DependencyReader {
 	public static DependencyReader createDependencyReader(String format)
 			throws IOException {
 
-		return createDependencyReader(format, false);
+		return createDependencyReader(format, false, false);
 	}
 
 	public boolean startReading(String file) throws IOException {

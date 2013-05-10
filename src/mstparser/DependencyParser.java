@@ -1,12 +1,9 @@
 package mstparser;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.StringTokenizer;
-import gnu.trove.*;
 
-import mstparser.io.*;
+
 
 public class DependencyParser {
 
@@ -57,10 +54,8 @@ public class DependencyParser {
 	private void trainingIter(int[] instanceLengths, String trainfile,
 			File train_forest, int iter) throws IOException {
 
-		int numUpd = 0;
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(
 				train_forest));
-		boolean evaluateI = true;
 
 		int numInstances = instanceLengths.length;
 
@@ -260,7 +255,8 @@ public class DependencyParser {
 	public static void main(String[] args) throws FileNotFoundException,
 			Exception {
 
-		ParserOptions options = new ParserOptions(args);
+		//ParserOptions options = new ParserOptions(args);
+		ParserOptions options = defaultOptions();
 
 		if (options.train) {
 
@@ -309,6 +305,14 @@ public class DependencyParser {
 			DependencyEvaluator.evaluate(options.goldfile, options.outfile,
 					options.format);
 		}
+	}
+	
+	private static ParserOptions defaultOptions() {
+		String [] paramsForABetterWorld = {"train", "train-file:btb/BTB-01-Train.mst" , "model-name:outputs/BTB-01-ord1-iter15.dep",
+				"iters:15", "decode-type:non-proj", "training-k:1", "loss-type:punc order:1", "test", 
+				"test-file:btb/BTB-01-Test.mst", "output-file:outputs/BTB-01-ord1-iter15.txt", "eval", 
+				"gold-file:btb/BTB-01-Test.mst"};
+		return new ParserOptions(paramsForABetterWorld) ;
 	}
 
 }

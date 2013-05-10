@@ -13,6 +13,7 @@
 package mstparser;
 
 import java.io.File;
+import static mstparser.DependencyInstancesVoting.*;
 
 /**
  * Hold all the options for the parser so they can be passed around easily.
@@ -47,6 +48,11 @@ public final class ParserOptions {
 	public boolean secondOrder = false;
 	public boolean useRelationalFeatures = false;
 	public boolean discourseMode = false;
+	
+	/** voting parameters **/
+	public boolean votingOn = false;
+	public String votingMode = AVG_ACCURACIES_MODE;
+	
 
 	public ParserOptions(String[] args) {
 
@@ -103,6 +109,16 @@ public final class ParserOptions {
 			}
 			if (pair[0].equals("discourse-mode")) {
 				discourseMode = pair[1].equals("true") ? true : false;
+			}
+			/** Voting parameters, Maria **/
+			if (pair[0].equals("voting-on")) {
+				votingOn = pair[1].equals("true") ? true : false;
+			}
+			if (pair[0].equals("voting-mode")) {
+				votingMode = pair[1];
+				if (!ACCURACIES_MODE.equals(votingMode) && !EQUAL_WEIGHTS_MODE.equals(votingMode)) {
+					votingMode = AVG_ACCURACIES_MODE;
+				}
 			}
 		}
 
@@ -162,6 +178,10 @@ public final class ParserOptions {
 		sb.append("relational-features: " + useRelationalFeatures);
 		sb.append(" | ");
 		sb.append("discourse-mode: " + discourseMode);
+		sb.append(" | ");
+		sb.append("voting-on: " + votingOn);
+		sb.append(" | ");
+		sb.append("voting-mode: " + votingMode);		
 		sb.append("]\n");
 		return sb.toString();
 	}
