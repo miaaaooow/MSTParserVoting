@@ -1,5 +1,5 @@
 *.class
-
+*.mst
 # Package Files #
 *.jar
 *.war

@@ -1,14 +1,9 @@
 package mstparser;
 
-import java.io.*;
-import java.util.ArrayList;
-import java.util.ListIterator;
-import gnu.trove.*;
 
 public class Parameters {
-
-	private double SCORE = 0.0;
-
+	
+	
 	public double[] parameters;
 	public double[] total;
 	public String lossType = "punc";

@@ -44,6 +44,19 @@ public class MSTVotingReader extends MSTReader {
 	/** indexes of chosen parsers **/
 	private int [] chosenParsers;
 	
+	private int instancesCount = 0;
+	
+	private ArrayList<DependencyInstancesVoting> votingGroups 
+						= new ArrayList<DependencyInstancesVoting>();
+	
+	public DependencyInstance getNext() throws IOException {
+		instancesCount += 1;
+		DependencyInstance depInst = super.getNext();
+		if (depInst != null) {
+			
+		}
+		return depInst;
+	}
 	
 	public DependencyInstancesVoting getNextVotingGroup() throws IOException {
 		int M = chosenParsers.length; // number of parsers in the group
@@ -60,20 +73,27 @@ public class MSTVotingReader extends MSTReader {
 		labeled = fileContainsLabels(file);
 		inputReader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF8"));
 		
+		// number of parsers
 		String line = inputReader.readLine();
 		N = Integer.parseInt(line);
 		int M = chosenParsers.length;
 
+		// weights - labeled; unlabeled
 		line = inputReader.readLine();
-		String [] parsersWeights = line.split("\\t");
-		if (parsersWeights.length != N) {
+		String [] parsersWeightsL = line.split("\\t"); // labeled
+		line = inputReader.readLine();
+		String [] parsersWeightsU = line.split("\\t"); // unlabeled
+		if (parsersWeightsL.length != N || parsersWeightsU.length != N ||
+			(parsersWeightsL.length != parsersWeightsU.length)) {
 			System.err.println("Wrong number of parsers' weights");
 		}
 		for (int i = 0; i < N; i++) {
-			weightsOfParsers[i] = Double.parseDouble(parsersWeights[i]);
+			weightsOfParsersLAB[i] = Double.parseDouble(parsersWeightsL[i]);
+			weightsOfParsersULAB[i] = Double.parseDouble(parsersWeightsU[i]);
 		}
-		line = inputReader.readLine();
 		
+		// chosen 
+		line = inputReader.readLine();
 		String [] chosenParsersStr = line.split("\\t");
 		if (M < 2 || M > N) {
 			System.err.println("Wrong number of chosen parsers");
@@ -90,7 +110,7 @@ public class MSTVotingReader extends MSTReader {
 	@Override
 	protected boolean fileContainsLabels(String filename) throws IOException {
 		BufferedReader in = new BufferedReader(new FileReader(filename));
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < 9; i++) {
 			in.readLine();
 		}
 		String line = in.readLine();
