@@ -6,8 +6,10 @@ import gnu.trove.*;
 
 public class DependencyPipe {
 
+	/** Alphabet of features **/
 	public Alphabet dataAlphabet;
-
+	
+	/** Alphabet of dependency relation types */
 	public Alphabet typeAlphabet;
 
 	private DependencyReader depReader;
@@ -127,8 +129,9 @@ public class DependencyPipe {
 
 		closeAlphabets();
 
-		if (options.createForest)
+		if (options.createForest) {
 			out.close();
+		}
 
 		return lengths.toNativeArray();
 
@@ -145,8 +148,9 @@ public class DependencyPipe {
 		while (instance != null) {
 
 			String[] labs = instance.deprels;
-			for (int i = 0; i < labs.length; i++)
+			for (int i = 0; i < labs.length; i++) {
 				typeAlphabet.lookupIndex(labs[i]);
+			}
 
 			createFeatureVector(instance);
 
@@ -157,6 +161,7 @@ public class DependencyPipe {
 
 		System.out.println("Done.");
 	}
+	
 
 	public void closeAlphabets() {
 		dataAlphabet.stopGrowth();
@@ -194,8 +199,9 @@ public class DependencyPipe {
 
 		FeatureVector fv = new FeatureVector();
 		for (int i = 0; i < instanceLength; i++) {
-			if (heads[i] == -1)
+			if (heads[i] == -1) {
 				continue;
+			}
 			int small = i < heads[i] ? i : heads[i];
 			int large = i > heads[i] ? i : heads[i];
 			boolean attR = i < heads[i] ? false : true;
@@ -509,8 +515,9 @@ public class DependencyPipe {
 	public void addLabeledFeatures(DependencyInstance instance, int word,
 			String type, boolean attR, boolean childFeatures, FeatureVector fv) {
 
-		if (!labeled)
+		if (!labeled) {
 			return;
+		}
 
 		String[] forms = instance.forms;
 		String[] pos = instance.postags;
@@ -684,19 +691,19 @@ public class DependencyPipe {
 		final int instanceLength = instance.length();
 
 		// Get production crap.
-		for (int w1 = 0; w1 < instanceLength; w1++) {
-			for (int w2 = w1 + 1; w2 < instanceLength; w2++) {
+		for (int word1index = 0; word1index < instanceLength; word1index++) {
+			for (int w2 = word1index + 1; w2 < instanceLength; w2++) {
 				for (int ph = 0; ph < 2; ph++) {
 					boolean attR = ph == 0 ? true : false;
 
-					int childInt = attR ? w2 : w1;
-					int parInt = attR ? w1 : w2;
+					int childInt = attR ? w2 : word1index;
+					int parInt = attR ? word1index : w2;
 
 					FeatureVector prodFV = new FeatureVector();
-					addCoreFeatures(instance, w1, w2, attR, prodFV);
+					addCoreFeatures(instance, word1index, w2, attR, prodFV);
 					double prodProb = params.getScore(prodFV);
-					fvs[w1][w2][ph] = prodFV;
-					probs[w1][w2][ph] = prodProb;
+					fvs[word1index][w2][ph] = prodFV;
+					probs[word1index][w2][ph] = prodProb;
 				}
 			}
 		}

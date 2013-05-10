@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import mstparser.DependencyInstance;
 import mstparser.DependencyInstancesVoting;
@@ -16,34 +17,33 @@ import mstparser.DependencyInstancesVoting;
  * (obviously based on {@link MSTReader})
  * 
  * 
- * The expected format is as follows; \t is a separator for compatibility:
+ * The expected format is as follows; "\t" is the standard separator for compatibility:
  * line1: N_parsers
- * line2: weight1 weight2 ... weight_Nparsers
- * line3: ID1 ID2 IDM of the parsers we choose for this experiment
+ * line2: weight1 weight2 ... weight_Nparsers   // Labeled
+ * line3: weight1 weight2 ... weight_Nparsers   // Unlabeled
+ * line4: ID1 ID2 IDM of the parsers we choose for this experiment
  * 	(e.g. we have 12 parsers and want to vote No.1, No.3 and No.12)
- * line4: empty
- * line5: sentence words
- * line6: pos tags
- * line7: labels/heads
- * line8: heads or empty(if in unlabeled mode)
- * line9: empty or next dependency(if in unlabeled mode) 
+ * line5: empty
+ * line6: sentence words
+ * line7: pos tags
+ * line8: labels/heads
+ * line9: heads or empty(if in unlabeled mode)
+ * line10: empty or next dependency(if in unlabeled mode) 
  **/
 public class MSTVotingReader extends MSTReader {
 	
 	/** number of total parsers that we choose **/
 	private int N; 
 
-	/** weights of all parsers **/
-	private double [] weightsOfParsers;
+	/** weights of all parsers - LABELED **/
+	private double [] weightsOfParsersLAB;
+	
+	/** weights of all parsers - UNLABELED **/
+	private double [] weightsOfParsersULAB;
 	
 	/** indexes of chosen parsers **/
 	private int [] chosenParsers;
 	
-//	@Override
-//	public DependencyInstance getNext() throws IOException {
-//		
-//		return null;
-//	}
 	
 	public DependencyInstancesVoting getNextVotingGroup() throws IOException {
 		int M = chosenParsers.length; // number of parsers in the group
@@ -62,6 +62,8 @@ public class MSTVotingReader extends MSTReader {
 		
 		String line = inputReader.readLine();
 		N = Integer.parseInt(line);
+		int M = chosenParsers.length;
+
 		line = inputReader.readLine();
 		String [] parsersWeights = line.split("\\t");
 		if (parsersWeights.length != N) {
@@ -72,7 +74,16 @@ public class MSTVotingReader extends MSTReader {
 		}
 		line = inputReader.readLine();
 		
-		String [] chosenParsers = line.split("\\t");
+		String [] chosenParsersStr = line.split("\\t");
+		if (M < 2 || M > N) {
+			System.err.println("Wrong number of chosen parsers");
+		}
+		chosenParsers = new int [M];
+		for (int i = 0; i < M; i++) {
+			chosenParsers[i] = Integer.parseInt(chosenParsersStr[i]);
+		}
+		Arrays.sort(chosenParsers);
+		System.out.println(chosenParsers.toString());
 		return labeled;
 	}
 

@@ -85,9 +85,11 @@ public class DependencyParser {
 						nt_fvs, nt_probs, params);
 			}
 
-			else
+			else {
+				// first order. here we are
 				inst = pipe.readInstance(in, length, fvs, probs, nt_fvs,
 						nt_probs, params);
+			}
 
 			double upd = (double) (options.numIters * numInstances
 					- (numInstances * (iter - 1) + (i + 1)) + 1);
@@ -180,9 +182,9 @@ public class DependencyParser {
 				((DependencyPipe2O) pipe).fillFeatureVectors(instance, fvs,
 						probs, fvs_trips, probs_trips, fvs_sibs, probs_sibs,
 						nt_fvs, nt_probs, params);
-			else
-				pipe.fillFeatureVectors(instance, fvs, probs, nt_fvs, nt_probs,
-						params);
+			else {
+				pipe.fillFeatureVectors(instance, fvs, probs, nt_fvs, nt_probs, params);
+			}
 
 			int K = options.testK;
 			Object[][] d = null;
@@ -196,13 +198,15 @@ public class DependencyParser {
 							nt_probs, K);
 			}
 			if (options.decodeType.equals("non-proj")) {
-				if (options.secondOrder)
+				if (options.secondOrder) {
 					d = ((DependencyDecoder2O) decoder).decodeNonProjective(
 							instance, fvs, probs, fvs_trips, probs_trips,
 							fvs_sibs, probs_sibs, nt_fvs, nt_probs, K);
-				else
+				}
+				else {
 					d = decoder.decodeNonProjective(instance, fvs, probs,
 							nt_fvs, nt_probs, K);
+				}
 			}
 
 			String[] res = ((String) d[0][1]).split(" ");
@@ -227,18 +231,6 @@ public class DependencyParser {
 
 			pipe.outputInstance(new DependencyInstance(formsNoRoot, posNoRoot,
 					labels, heads));
-
-			// String line1 = ""; String line2 = ""; String line3 = ""; String
-			// line4 = "";
-			// for(int j = 1; j < pos.length; j++) {
-			// String[] trip = res[j-1].split("[\\|:]");
-			// line1+= sent[j] + "\t"; line2 += pos[j] + "\t";
-			// line4 += trip[0] + "\t"; line3 +=
-			// pipe.types[Integer.parseInt(trip[2])] + "\t";
-			// }
-			// pred.write(line1.trim() + "\n" + line2.trim() + "\n"
-			// + (pipe.labeled ? line3.trim() + "\n" : "")
-			// + line4.trim() + "\n\n");
 
 			instance = pipe.nextInstance();
 		}
@@ -308,11 +300,11 @@ public class DependencyParser {
 	}
 	
 	private static ParserOptions defaultOptions() {
-		String [] paramsForABetterWorld = {"train", "train-file:btb/BTB-01-Train.mst" , "model-name:outputs/BTB-01-ord1-iter15.dep",
+		String [] paramsForABetterWorld = {"train", "train-file:BTB-01-Train.mst" , "model-name:BTB-01-ord1-iter15.dep",
 				"iters:15", "decode-type:non-proj", "training-k:1", "loss-type:punc order:1", "test", 
-				"test-file:btb/BTB-01-Test.mst", "output-file:outputs/BTB-01-ord1-iter15.txt", "eval", 
-				"gold-file:btb/BTB-01-Test.mst",
-				"voting-on:true"};
+				"test-file:BTB-01-Test.mst", "output-file:BTB-01-ord1-iter15.txt", "eval", 
+				"gold-file:BTB-01-Test.mst", "format:MST", 
+				"voting-on:false"};
 		return new ParserOptions(paramsForABetterWorld) ;
 	}
 
