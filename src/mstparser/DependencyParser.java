@@ -311,7 +311,8 @@ public class DependencyParser {
 		String [] paramsForABetterWorld = {"train", "train-file:btb/BTB-01-Train.mst" , "model-name:outputs/BTB-01-ord1-iter15.dep",
 				"iters:15", "decode-type:non-proj", "training-k:1", "loss-type:punc order:1", "test", 
 				"test-file:btb/BTB-01-Test.mst", "output-file:outputs/BTB-01-ord1-iter15.txt", "eval", 
-				"gold-file:btb/BTB-01-Test.mst"};
+				"gold-file:btb/BTB-01-Test.mst",
+				"voting-on:true"};
 		return new ParserOptions(paramsForABetterWorld) ;
 	}
 
