@@ -30,7 +30,7 @@ import java.io.*;
 public class MSTReader extends DependencyReader {
 
 	public DependencyInstance getNext() throws IOException {
-
+		
 		String line = inputReader.readLine();
 		String pos_line = inputReader.readLine();
 		String deprel_line = labeled ? inputReader.readLine() : pos_line;
@@ -97,7 +97,7 @@ public class MSTReader extends DependencyReader {
 		String line = in.readLine();
 		in.close();
 
-		if (line.trim().length() > 0) {
+		if (line!= null && line.trim().length() > 0) {
 			return true;
 		} else {
 			return false;

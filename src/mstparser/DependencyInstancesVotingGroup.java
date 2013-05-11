@@ -56,6 +56,7 @@ public class DependencyInstancesVotingGroup {
 	
 	public DependencyInstancesVotingGroup(DependencyInstancesVotingGroupParameters params, 
 			ArrayList<Double> parserAccuracies) {
+		this.instances = new ArrayList<DependencyInstance>();
 		this.depAlphabet = params.alphabet;
 		this.depRelAlphaSize = this.depAlphabet.size();
 		this.chosenParsersAccuracies = parserAccuracies;

@@ -60,7 +60,7 @@ public class MSTVotingReader extends MSTReader {
 	public void setVotingParams(
 			DependencyInstancesVotingGroupParameters votingParams) {
 		this.votingParams = votingParams;
-		this.currentVotingGroup = new DependencyInstancesVotingGroup(votingParams);
+		this.currentVotingGroup = new DependencyInstancesVotingGroup(votingParams, weightsOfChosenParsers);
 	}
 
 	public int getN() {
@@ -77,7 +77,7 @@ public class MSTVotingReader extends MSTReader {
 			}
 			if (numberOfParser == N) {
 				votingGroups.add(currentVotingGroup);
-				currentVotingGroup = new DependencyInstancesVotingGroup(votingParams);
+				currentVotingGroup = new DependencyInstancesVotingGroup(votingParams, weightsOfChosenParsers);
 			}
 		} 
 		instancesCount += 1;
@@ -90,7 +90,6 @@ public class MSTVotingReader extends MSTReader {
 		for (int i = 0; i < M; i++) {
 			trees.add(getNext());
 		}
-		
 		return null;
 	}
 	
@@ -133,7 +132,7 @@ public class MSTVotingReader extends MSTReader {
 	@Override
 	protected boolean fileContainsLabels(String filename) throws IOException {
 		BufferedReader in = new BufferedReader(new FileReader(filename));
-		for (int i = 0; i < 7; i++) {
+		for (int i = 0; i < 6; i++) {
 			in.readLine();
 		}
 		String line = in.readLine();

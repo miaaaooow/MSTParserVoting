@@ -35,9 +35,14 @@ public class VotingParser {
 	}
 	
 	private void setup (ParserOptions options) throws IOException {
-		createAlphabetAndVotingInstances(options.testfile);
-		int [] chosenParsers = getChosenParsersIndexes(options.votingParser);
+		System.out.println(options.toString());
+		this.options = options;
+		int [] chosenParsers = getChosenParsersIndexes(options.votingParsers);
 		votingReader = new MSTVotingReader(chosenParsers);
+		DependencyInstancesVotingGroupParameters votingParameters = 
+				new DependencyInstancesVotingGroupParameters(typeAlphabet, options.votingMode, labeled);
+		votingReader.setVotingParams(votingParameters);		
+		createAlphabetAndVotingInstances(options.testfile);
 		labeled = votingReader.startReading(options.testfile);
 		
 		mstWriter = new MSTWriter(labeled);
@@ -58,12 +63,10 @@ public class VotingParser {
 		System.out.println("Parsers chosen for voting: ");
 		int [] chosenParsers = new int [M];
 		for (int i = 0; i < M; i++) {
-			System.out.print(chosenParsers[i]);
 			chosenParsers[i] = Integer.parseInt(chosenParsersStr[i]);
-			if (chosenParsers[i] > votingReader.getN()) {
-				System.err.println("Suspicuous chosen parser id");
-			}
+			System.out.print(chosenParsers[i] + " ");
 		}
+		System.out.println();
 		Arrays.sort(chosenParsers);
 		return chosenParsers;
 	}
@@ -76,7 +79,7 @@ public class VotingParser {
 	private final void createAlphabetAndVotingInstances(String file) throws IOException {
 		System.out.print("Creating Dep Rel Alphabet ... ");
 		labeled = votingReader.startReading(file);
-
+		System.out.println("Lebeled:" + labeled);
 		DependencyInstance instance = votingReader.getNext();
 		while (instance != null) {
 			String[] labs = instance.deprels;
@@ -94,6 +97,8 @@ public class VotingParser {
 	 * Final step; writing files
 	 */
 	public void evaluate() throws IOException {
+		System.out.println(options);
+		System.out.println(options.eval);
 		if (options.eval) {
 			System.out.println("\nEVALUATION PERFORMANCE:");
 			DependencyEvaluator.evaluate(options.goldfile, options.outfile, "MST");
@@ -113,7 +118,7 @@ public class VotingParser {
 		}
 		VotingParser algorithm = new VotingParser();
 		algorithm.setup(opts);		
-		
+		System.out.println("HA!");
 		// do voting
 	
 		algorithm.mstWriter.finishWriting();
