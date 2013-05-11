@@ -1,6 +1,7 @@
 package mstparser;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import mstparser.io.MSTVotingReader;
@@ -28,7 +29,7 @@ public class VotingParser {
 //	private int [] chosenParsers; 
 	
 	private MSTVotingReader votingReader;
-	private MSTWriter mstWriter;
+	private MSTWriter votingWriter;
 	
 	public VotingParser() {
 		this.typeAlphabet = new Alphabet();	
@@ -45,8 +46,8 @@ public class VotingParser {
 		createAlphabetAndVotingInstances(options.testfile);
 		labeled = votingReader.startReading(options.testfile);
 		
-		mstWriter = new MSTWriter(labeled);
-		mstWriter.startWriting(options.outfile);
+		votingWriter = new MSTWriter(labeled);
+		votingWriter.startWriting(options.outfile);
 	}
 	
 	/**
@@ -92,6 +93,14 @@ public class VotingParser {
 		System.out.println("Done.");
 	}
 	
+	public void vote() throws IOException {
+		ArrayList<DependencyInstancesVotingGroup> groups = votingReader.getVotingGroups();
+		for (DependencyInstancesVotingGroup group : groups) {
+			DependencyInstance result = group.getVotedDependencyInstance();
+			votingWriter.write(result);
+		}
+		votingWriter.finishWriting();
+	}
 	
 	/**
 	 * Final step; writing files
@@ -118,10 +127,10 @@ public class VotingParser {
 		}
 		VotingParser algorithm = new VotingParser();
 		algorithm.setup(opts);		
-		System.out.println("HA!");
+		
 		// do voting
 	
-		algorithm.mstWriter.finishWriting();
+		algorithm.votingWriter.finishWriting();
 		algorithm.evaluate();
 	}
 	

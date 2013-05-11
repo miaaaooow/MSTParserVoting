@@ -225,18 +225,18 @@ public class DependencyDecoder {
 			}
 		}
 
-		TIntIntHashMap final_edges = chuLiuEdmonds(scoreMatrix, curr_nodes,
+		TIntIntHashMap finalEdges = chuLiuEdmonds(scoreMatrix, curr_nodes,
 				oldI, oldO, false, new TIntIntHashMap(), reps);
-		int[] par = new int[numWords];
-		int[] ns = final_edges.keys();
+		int[] parse = new int[numWords];
+		int[] ns = finalEdges.keys();
 		for (int i = 0; i < ns.length; i++) {
 			int ch = ns[i];
-			int pr = final_edges.get(ns[i]);
-			par[ch] = pr;
+			int pr = finalEdges.get(ns[i]);
+			parse[ch] = pr;
 		}
 
-		int[] n_par = getKChanges(par, orig_scoreMatrix,
-				Math.min(K, par.length));
+		int[] n_par = getKChanges(parse, orig_scoreMatrix,
+				Math.min(K, parse.length));
 		int new_k = 1;
 		for (int i = 0; i < n_par.length; i++)
 			if (n_par[i] > -1)
@@ -245,13 +245,13 @@ public class DependencyDecoder {
 		// Create Feature Vectors;
 		int[][] fin_par = new int[new_k][numWords];
 		FeatureVector[][] fin_fv = new FeatureVector[new_k][numWords];
-		fin_par[0] = par;
+		fin_par[0] = parse;
 		int c = 1;
 		for (int i = 0; i < n_par.length; i++) {
 			if (n_par[i] > -1) {
-				int[] t_par = new int[par.length];
+				int[] t_par = new int[parse.length];
 				for (int j = 0; j < t_par.length; j++)
-					t_par[j] = par[j];
+					t_par[j] = parse[j];
 				t_par[i] = n_par[i];
 				fin_par[c] = t_par;
 				c++;
@@ -284,7 +284,7 @@ public class DependencyDecoder {
 			for (int i = 1; i < fin_fv[k].length; i++)
 				fin[k] = fin_fv[k][i].cat(fin[k]);
 			result[k] = "";
-			for (int i = 1; i < par.length; i++)
+			for (int i = 1; i < parse.length; i++)
 				result[k] += fin_par[k][i]
 						+ "|"
 						+ i
@@ -366,7 +366,7 @@ public class DependencyDecoder {
 		return isChild;
 	}
 
-	private static TIntIntHashMap chuLiuEdmonds(double[][] scoreMatrix,
+	public static TIntIntHashMap chuLiuEdmonds(double[][] scoreMatrix,
 			boolean[] currentNodes, int[][] oldI, int[][] oldO, boolean print,
 			TIntIntHashMap finalEdges, TIntIntHashMap[] reps) {
 

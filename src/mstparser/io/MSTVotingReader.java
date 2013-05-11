@@ -76,6 +76,7 @@ public class MSTVotingReader extends MSTReader {
 				currentVotingGroup.instances.add(depInst);
 			}
 			if (numberOfParser == N) {
+				System.out.println("Added new voting group!");
 				votingGroups.add(currentVotingGroup);
 				currentVotingGroup = new DependencyInstancesVotingGroup(votingParams, weightsOfChosenParsers);
 			}
@@ -84,13 +85,8 @@ public class MSTVotingReader extends MSTReader {
 		return depInst;
 	}
 	
-	public DependencyInstancesVotingGroup getVotingGroups() throws IOException {
-		int M = chosenParsers.length; // number of parsers in the group
-		ArrayList<DependencyInstance> trees = new ArrayList<DependencyInstance>(M);
-		for (int i = 0; i < M; i++) {
-			trees.add(getNext());
-		}
-		return null;
+	public ArrayList<DependencyInstancesVotingGroup> getVotingGroups() throws IOException {
+		return votingGroups;
 	}
 	
 	public ArrayList<Double> getChosenParsersWeights() {

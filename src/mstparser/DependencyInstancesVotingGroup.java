@@ -64,6 +64,27 @@ public class DependencyInstancesVotingGroup {
 		this.labeled = params.labeled;
 	}
 	
+	/** Sentence properties that apply to the whole group **/
+	public int length() {
+		if (instances.get(0) != null) {
+			return instances.get(0).length();
+		}
+		return 0;		
+	}
+	
+	public String [] forms() {
+		if (instances.get(0) != null) {
+			return instances.get(0).forms;
+		}
+		return null;
+	}
+	
+	public String [] postags() {
+		if (instances.get(0) != null) {
+			return instances.get(0).postags;
+		}
+		return null;
+	}
 	
 	/**
 	 * Says if all sentences in this group have the same length.
@@ -71,7 +92,7 @@ public class DependencyInstancesVotingGroup {
 	 * @return true if valid
 	 */
 	public boolean validateGroup() {
-		int length = this.instances.get(0).length();
+		int length = length();
 		for (DependencyInstance depInst : instances) {
 			if (depInst.length() != length) {
 				System.err.println("Inaccurate Group!");
@@ -92,7 +113,7 @@ public class DependencyInstancesVotingGroup {
 	 * @return
 	 */
 	public double [][] buildGraphVotesMatrixUnlabeled() {
-		int length = this.instances.get(0).length();
+		int length = length();
 		double [][] scores = new double [length][length];
 		// sentence_length x sentence_length x LAB
 		if (mode.equals(EQUAL_WEIGHTS_MODE)) {
@@ -120,8 +141,8 @@ public class DependencyInstancesVotingGroup {
 	 * @param mode
 	 * @return
 	 */
-	public double [][][] buildGraphVotesMatrixLabeled(String mode) {
-		int length = this.instances.get(0).length();
+	public double [][][] buildGraphVotesMatrixLabeled() {
+		int length = length();
 		double [][][]scores = new double [length][length][depAlphabet.size()];
 		if (mode.equals(EQUAL_WEIGHTS_MODE)) {
 			for (DependencyInstance depInst : instances) {
@@ -158,16 +179,53 @@ public class DependencyInstancesVotingGroup {
 	}
 	
 	public DependencyInstance getVotedDependencyInstance() {
+		validateGroup();		
+		int len = length();
+
+		DependencyInstance resultDI = null;
 		
+		/** Chu-Liu-Edmonds Defaults */
+		boolean [] currentNodes = new boolean[len];
+		TIntIntHashMap[] reps = new TIntIntHashMap[len];
+		for (int i = 0; i < len; i++){
+			currentNodes[i] = true;
+			reps[i] = new TIntIntHashMap();
+			reps[i].put(i, 0);
+		}
+		int [][] oldI = new int [len][len];
+		int [][] oldO = new int [len][len];
+		
+		for (int i = 0; i < len; i++) {
+			for (int j = 0; j < len; j++) {
+				oldI[i][j] = i;
+				oldO[i][j] = j;
+				if (i == j || j == 0)
+					continue; // no self loops of i --> 0
+			}
+		}
 		/** Invoke Chu-Liu-Edmonds **/
 		/**
 		 * private static TIntIntHashMap chuLiuEdmonds(double[][] scoreMatrix,
 			boolean[] currentNodes, int[][] oldI, int[][] oldO, boolean print,
 			TIntIntHashMap finalEdges, TIntIntHashMap[] reps)
 		 */
-		
-		double [][][] scoreMatrix = buildGraphVotesMatrixLabeled(mode);
-		return null;
+		if (labeled) {
+			double [][][] scoreMatrix = buildGraphVotesMatrixLabeled();
+		} else {
+			double [][] scores = buildGraphVotesMatrixUnlabeled();
+			TIntIntHashMap result = 
+					DependencyDecoder.chuLiuEdmonds(scores, currentNodes, oldI, oldO, true, new TIntIntHashMap(), reps);
+			int[] parse = new int[len];
+			int[] res = result.keys();
+			for (int i = 0; i < res.length; i++) {
+				int ch = res[i];
+				int pr = result.get(res[i]);
+				parse[ch] = pr;
+			}
+			resultDI = new DependencyInstance(forms(), postags(), postags(), parse);
+			System.out.println(resultDI);
+		}
+		return resultDI;
 		
 	}
 	
