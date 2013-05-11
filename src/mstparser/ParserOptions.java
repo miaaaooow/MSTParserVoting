@@ -13,7 +13,7 @@
 package mstparser;
 
 import java.io.File;
-import static mstparser.DependencyInstancesVoting.*;
+import static mstparser.VotingParser.*;
 
 /**
  * Hold all the options for the parser so they can be passed around easily.

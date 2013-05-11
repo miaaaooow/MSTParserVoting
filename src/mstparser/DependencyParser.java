@@ -247,11 +247,10 @@ public class DependencyParser {
 	public static void main(String[] args) throws FileNotFoundException,
 			Exception {
 
-		//ParserOptions options = new ParserOptions(args);
-		ParserOptions options = defaultOptions();
+		ParserOptions options = new ParserOptions(args);
+		//ParserOptions options = defaultOptions();
 
 		if (options.train) {
-
 			DependencyPipe pipe = options.secondOrder ? new DependencyPipe2O(
 					options) : new DependencyPipe(options);
 
@@ -299,13 +298,6 @@ public class DependencyParser {
 		}
 	}
 	
-	private static ParserOptions defaultOptions() {
-		String [] paramsForABetterWorld = {"train", "train-file:BTB-01-Train.mst" , "model-name:BTB-01-ord1-iter15.dep",
-				"iters:15", "decode-type:non-proj", "training-k:1", "loss-type:punc order:1", "test", 
-				"test-file:BTB-01-Test.mst", "output-file:BTB-01-ord1-iter15.txt", "eval", 
-				"gold-file:BTB-01-Test.mst", "format:MST", 
-				"voting-on:false"};
-		return new ParserOptions(paramsForABetterWorld) ;
-	}
+
 
 }

@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import mstparser.DependencyInstance;
-import mstparser.DependencyInstancesVoting;
+import mstparser.DependencyInstancesVotingGroup;
 
 /** 
  * Maria Mateva: 
@@ -46,9 +46,12 @@ public class MSTVotingReader extends MSTReader {
 	
 	private int instancesCount = 0;
 	
-	private ArrayList<DependencyInstancesVoting> votingGroups 
-						= new ArrayList<DependencyInstancesVoting>();
+	private ArrayList<DependencyInstancesVotingGroup> votingGroups;
 	
+	public MSTVotingReader () {
+		this.votingGroups = new ArrayList<DependencyInstancesVotingGroup>();
+
+	}
 	public DependencyInstance getNext() throws IOException {
 		instancesCount += 1;
 		DependencyInstance depInst = super.getNext();
@@ -58,7 +61,7 @@ public class MSTVotingReader extends MSTReader {
 		return depInst;
 	}
 	
-	public DependencyInstancesVoting getNextVotingGroup() throws IOException {
+	public DependencyInstancesVotingGroup getVotingGroups() throws IOException {
 		int M = chosenParsers.length; // number of parsers in the group
 		ArrayList<DependencyInstance> trees = new ArrayList<DependencyInstance>(M);
 		for (int i = 0; i < M; i++) {
@@ -68,6 +71,9 @@ public class MSTVotingReader extends MSTReader {
 		return null;
 	}
 	
+	/**
+	 * Returns if labeled or not
+	 */
 	@Override
 	public boolean startReading(String file) throws IOException {
 		labeled = fileContainsLabels(file);
