@@ -45,6 +45,11 @@ public class DependencyInstancesVotingGroup {
 	 */
 	int depRelAlphaSize;
 	
+	/**
+	 * Labeled or unlabeled mode
+	 */
+	boolean labeled;
+	
 	public DependencyInstancesVotingGroup(ArrayList<DependencyInstance> instances, 
 			ArrayList<Double> parserAccuracies, String mode, boolean labeled, Alphabet alpha) {
 		this.instances = instances;
@@ -52,7 +57,17 @@ public class DependencyInstancesVotingGroup {
 		this.depAlphabet = alpha;
 		this.depRelAlphaSize = depAlphabet.size();
 		this.mode = mode;
-		this.length = instances.get(0).length();
+		this.length = this.instances.get(0).length();
+		this.labeled = labeled;
+	}
+	
+	public DependencyInstancesVotingGroup(DependencyInstancesVotingGroupParameters params) {
+		this.parserAccuracies = params.parserAccuracies;
+		this.depAlphabet = params.alphabet;
+		this.depRelAlphaSize = this.depAlphabet.size();
+		this.mode = params.mode;
+		//this.length = this.instances.get(0).length();
+		this.labeled = params.labeled;
 	}
 	
 	/**
@@ -146,7 +161,7 @@ public class DependencyInstancesVotingGroup {
 		return null ;
 	}
 	
-	public void getVotedDependencyInstance() {
+	public DependencyInstance getVotedDependencyInstance() {
 		
 		/** Invoke Chu-Liu-Edmonds **/
 		/**
@@ -156,6 +171,7 @@ public class DependencyInstancesVotingGroup {
 		 */
 		
 		double [][][] scoreMatrix = buildGraphVotesMatrixLabeled(mode);
+		return null;
 		
 	}
 	

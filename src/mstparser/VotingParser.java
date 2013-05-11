@@ -2,9 +2,9 @@ package mstparser;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Set;
 
 import mstparser.io.MSTVotingReader;
+import mstparser.io.MSTWriter;
 
 /**
  * A pipeline for voting, where after the voting of several parses,
@@ -16,6 +16,8 @@ public class VotingParser {
 	public static final String EQUAL_WEIGHTS_MODE = "equal";
 	public static final String ACCURACIES_MODE = "accuracies";
 	public static final String AVG_ACCURACIES_MODE = "avg-accuracies";
+	/** Options to create and run this parser */
+	private ParserOptions options;
 	
 	/** Alphabet of dependency relation types */
 	private Alphabet typeAlphabet;
@@ -26,8 +28,9 @@ public class VotingParser {
 //	private int [] chosenParsers; 
 	
 	private MSTVotingReader votingReader;
+	private MSTWriter mstWriter;
 	
-	public VotingParser(ParserOptions opts) {
+	public VotingParser() {
 		this.typeAlphabet = new Alphabet();	
 	}
 	
@@ -36,6 +39,8 @@ public class VotingParser {
 		int [] chosenParsers = getChosenParsersIndexes(options.votingParser);
 		votingReader = new MSTVotingReader(chosenParsers);
 		labeled = votingReader.startReading(options.testfile);
+		mstWriter = new MSTWriter(labeled);
+		mstWriter.startWriting(options.outfile);
 	}
 	
 	/**
@@ -63,22 +68,6 @@ public class VotingParser {
 	}
 	
 	/**
-	 * Run voting style with Chu-Liu-Edmonds
-	 * @param args
-	 */
-	public static void main(String[] args) throws IOException {
-		ParserOptions opts;
-		if (args.length > 1) {
-			opts = new ParserOptions(args);
-		} else {
-			opts = defaultOptions();
-		}
-		VotingParser algorithm = new VotingParser(opts);
-		
-		
-	}
-	
-	/**
 	 * Sets up typeAlphabet and labeled
 	 * @param file
 	 * @throws IOException
@@ -96,17 +85,61 @@ public class VotingParser {
 			instance = votingReader.getNext();
 		}
 		typeAlphabet.stopGrowth();
-
 		System.out.println("Done.");
 	}
 	
-	private static ParserOptions defaultOptions() {
+	
+	/**
+	 * Final step; writing files
+	 */
+	public void evaluate() throws IOException {
+		if (options.eval) {
+			System.out.println("\nEVALUATION PERFORMANCE:");
+			DependencyEvaluator.evaluate(options.goldfile, options.outfile, "MST");
+		}
+	}
+	
+	/**
+	 * Run voting style with Chu-Liu-Edmonds
+	 * @param args
+	 */
+	public static void main(String[] args) throws IOException {
+		ParserOptions opts;
+		if (args.length > 1) {
+			opts = new ParserOptions(args);
+		} else {
+			opts = defaultUnlabeledOptions();
+		}
+		VotingParser algorithm = new VotingParser();
+		algorithm.setup(opts);		
+		
+		// do voting
+	
+		algorithm.mstWriter.finishWriting();
+		algorithm.evaluate();
+	}
+	
+	/** default labeled options for test **/
+	private static ParserOptions defaultLabeledOptions() {
 		String [] paramsForABetterWorld = {
 				"voting-on:true", "voting-mode:equal",
-				"test-file:btb-all.mst", 
-				"output-file:voting-result.txt", 
-				"eval",  "gold-file:btb-gold.mst",
-				"format:MST", "voting-parsers:1,3,7,11,14" };
+				"voting-parsers:1,3,7,11,14",
+				"test-file:all-parsers-labeled-all.mst", 
+				"output-file:voting-labeled-1_3_7_11_14.mst", 
+				"eval", "gold-file:gold-labeled-all.mst"
+			 };
+			return new ParserOptions(paramsForABetterWorld) ;
+	}
+	
+	/** default unlabeled options for test **/
+	private static ParserOptions defaultUnlabeledOptions() {
+		String [] paramsForABetterWorld = {
+				"voting-on:true", "voting-mode:equal",
+				"voting-parsers:1,3,7,11,14",
+				"test-file:all-parsers-unlabeled-all.mst", 
+				"output-file:voting-unlabeled-1_3_7_11_14.mst", 
+				"eval", "gold-file:gold-unlabeled-all.mst"
+			 };
 			return new ParserOptions(paramsForABetterWorld) ;
 	}
 }

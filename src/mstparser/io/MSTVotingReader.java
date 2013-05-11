@@ -12,6 +12,7 @@ import java.util.Set;
 
 import mstparser.DependencyInstance;
 import mstparser.DependencyInstancesVotingGroup;
+import mstparser.DependencyInstancesVotingGroupParameters;
 
 /** 
  * Maria Mateva: 
@@ -24,11 +25,11 @@ import mstparser.DependencyInstancesVotingGroup;
  * line2: weight1 weight2 ... weight_Nparsers   // Labeled or Unlabeled
  * 	(e.g. we have 12 parsers and want to vote No.1, No.3 and No.12)
  * line3: empty
- * line5: sentence words
- * line6: pos tags
- * line7: labels/heads
- * line8: heads or empty(if in unlabeled mode)
- * line9: empty or next dependency(if in unlabeled mode) 
+ * line4: sentence words
+ * line5: POS tags
+ * line6: labels/heads
+ * line7: heads or empty(if in unlabeled mode)
+ * line8: empty or next dependency(if in unlabeled mode) 
  **/
 public class MSTVotingReader extends MSTReader {
 
@@ -40,20 +41,27 @@ public class MSTVotingReader extends MSTReader {
 	
 	/** indexes of chosen parsers **/
 	private int [] chosenParsers;
-	
 	private Set<Integer> chosenParsersSet;
 	
 	private int instancesCount;
-	
+	private DependencyInstancesVotingGroup currentVotingGroup;
 	private ArrayList<DependencyInstancesVotingGroup> votingGroups;
+	private DependencyInstancesVotingGroupParameters votingParams;
+	
 	
 	public MSTVotingReader (int [] chosenParsers) {
 		this.instancesCount = 0;
 		this.chosenParsers = chosenParsers;
-		this.chosenParsersSet = getSet (chosenParsers);
+		this.chosenParsersSet = getSet(chosenParsers);
 		this.votingGroups = new ArrayList<DependencyInstancesVotingGroup>(chosenParsers.length);
 	}
 	
+	public void setVotingParams(
+			DependencyInstancesVotingGroupParameters votingParams) {
+		this.votingParams = votingParams;
+		this.currentVotingGroup = new DependencyInstancesVotingGroup(votingParams);
+	}
+
 	public int getN() {
 		return N;
 	}
@@ -62,8 +70,13 @@ public class MSTVotingReader extends MSTReader {
 		instancesCount += 1;
 		DependencyInstance depInst = super.getNext();
 		if (depInst != null) {
-			System.out.println("Instance: " + instancesCount);	
-		}
+			System.out.println("Instance: " + instancesCount);
+			int numberOfParser = instancesCount % N;
+			if (chosenParsersSet.contains(numberOfParser)) {
+				
+			}
+		} 
+		
 		
 		return depInst;
 	}
@@ -102,16 +115,14 @@ public class MSTVotingReader extends MSTReader {
 		for (int i = 0; i < N; i++) {
 			weightsOfParsers[i] = Double.parseDouble(parsersWeightsL[i]);
 		}
-
-		Arrays.sort(chosenParsers);
-		System.out.println(chosenParsers.toString());
+		inputReader.readLine();
 		return labeled;
 	}
 
 	@Override
 	protected boolean fileContainsLabels(String filename) throws IOException {
 		BufferedReader in = new BufferedReader(new FileReader(filename));
-		for (int i = 0; i < 9; i++) {
+		for (int i = 0; i < 7; i++) {
 			in.readLine();
 		}
 		String line = in.readLine();
