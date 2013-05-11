@@ -76,6 +76,14 @@ public class DependencyInstancesVotingGroup {
 	 * @return
 	 */
 	public double [][][] buildGraphVotesMatrixLabeled(String mode) {
+		if (mode.equals(EQUAL_WEIGHTS_MODE)) {
+
+		} else if (mode.equals(ACCURACIES_MODE)) {
+
+		} else {
+			/** AVG ACCURACIES MODE **/
+
+		}
 		return null;
 	}
 	

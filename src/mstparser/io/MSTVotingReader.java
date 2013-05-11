@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Set;
 
 import mstparser.DependencyInstance;
 import mstparser.DependencyInstancesVotingGroup;
@@ -44,6 +45,8 @@ public class MSTVotingReader extends MSTReader {
 	/** indexes of chosen parsers **/
 	private int [] chosenParsers;
 	
+	private Set<Integer> chosenParsersSet;
+	
 	private int instancesCount = 0;
 	
 	private ArrayList<DependencyInstancesVotingGroup> votingGroups;
@@ -56,6 +59,7 @@ public class MSTVotingReader extends MSTReader {
 		instancesCount += 1;
 		DependencyInstance depInst = super.getNext();
 		if (depInst != null) {
+			System.out.println("Instance: " + instancesCount);
 			
 		}
 		return depInst;
@@ -107,6 +111,9 @@ public class MSTVotingReader extends MSTReader {
 		chosenParsers = new int [M];
 		for (int i = 0; i < M; i++) {
 			chosenParsers[i] = Integer.parseInt(chosenParsersStr[i]);
+			if (chosenParsers[i] > N) {
+				System.err.println("Suspicuous chosen parser id");
+			}
 		}
 		Arrays.sort(chosenParsers);
 		System.out.println(chosenParsers.toString());
