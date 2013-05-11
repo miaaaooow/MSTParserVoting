@@ -12,14 +12,14 @@ import java.util.ArrayList;
 public class DependencyInstancesVotingGroupParameters {
 	Alphabet alphabet;
 	String mode;
-	ArrayList<Double> parserAccuracies;
 	boolean labeled;
-	public DependencyInstancesVotingGroupParameters(Alphabet alphabet,
-			String mode, ArrayList<Double> parserAccuracies, boolean labeled) {
+	ArrayList<Double> parserAccuracies;
+	public DependencyInstancesVotingGroupParameters(ArrayList<Double> parsersAccuracies, Alphabet alphabet,
+			String mode, boolean labeled) {
 		super();
+		this.parserAccuracies = parsersAccuracies;
 		this.alphabet = alphabet;
 		this.mode = mode;
-		this.parserAccuracies = parserAccuracies;
 		this.labeled = labeled;
 	}	
 }

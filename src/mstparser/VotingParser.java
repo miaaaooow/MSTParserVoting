@@ -39,6 +39,7 @@ public class VotingParser {
 		int [] chosenParsers = getChosenParsersIndexes(options.votingParser);
 		votingReader = new MSTVotingReader(chosenParsers);
 		labeled = votingReader.startReading(options.testfile);
+		
 		mstWriter = new MSTWriter(labeled);
 		mstWriter.startWriting(options.outfile);
 	}

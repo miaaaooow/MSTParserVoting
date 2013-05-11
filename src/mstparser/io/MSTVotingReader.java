@@ -38,6 +38,7 @@ public class MSTVotingReader extends MSTReader {
 
 	/** weights of all parsers - LABELED or UNLABELED **/
 	private double [] weightsOfParsers;
+	private ArrayList<Double> weightsOfChosenParsers;
 	
 	/** indexes of chosen parsers **/
 	private int [] chosenParsers;
@@ -67,17 +68,19 @@ public class MSTVotingReader extends MSTReader {
 	}
 	
 	public DependencyInstance getNext() throws IOException {
-		instancesCount += 1;
 		DependencyInstance depInst = super.getNext();
 		if (depInst != null) {
 			System.out.println("Instance: " + instancesCount);
-			int numberOfParser = instancesCount % N;
+			int numberOfParser = 1 + instancesCount % N;
 			if (chosenParsersSet.contains(numberOfParser)) {
-				
+				currentVotingGroup.instances.add(depInst);
+			}
+			if (numberOfParser == N) {
+				votingGroups.add(currentVotingGroup);
+				currentVotingGroup = new DependencyInstancesVotingGroup(votingParams);
 			}
 		} 
-		
-		
+		instancesCount += 1;
 		return depInst;
 	}
 	
@@ -89,6 +92,14 @@ public class MSTVotingReader extends MSTReader {
 		}
 		
 		return null;
+	}
+	
+	public ArrayList<Double> getChosenParsersWeights() {
+		ArrayList<Double> res = new ArrayList<Double>();
+		for (int i : chosenParsers) {
+			res.add(weightsOfParsers[i]);
+		}
+		return res;
 	}
 	
 	/**

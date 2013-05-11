@@ -17,15 +17,15 @@ public class DependencyInstancesVotingGroup {
 	/**
 	 * Instances from the chosen parsers
 	 */
-	ArrayList<DependencyInstance> instances = new ArrayList<DependencyInstance>();
+	public ArrayList<DependencyInstance> instances = new ArrayList<DependencyInstance>();
 	
 	/**
 	 * Corresponding accuracies of the above(weight); so same length
 	 */
-	ArrayList<Double> parserAccuracies;
+	ArrayList<Double> chosenParsersAccuracies;
 	
 	/**
-	 * mode of depencency 
+	 * Mode of voting 
 	 */
 	String mode;
 	
@@ -33,12 +33,6 @@ public class DependencyInstancesVotingGroup {
 	 * Types alphabet; alphabet of the dependency types
 	 */
 	Alphabet depAlphabet; 
-	
-	/**
-	 * Length of the sentence we have as base to this group.
-	 * (ROOT is also counted).
-	 */
-	int length;
 	
 	/**
 	 * Alphabet size
@@ -53,22 +47,22 @@ public class DependencyInstancesVotingGroup {
 	public DependencyInstancesVotingGroup(ArrayList<DependencyInstance> instances, 
 			ArrayList<Double> parserAccuracies, String mode, boolean labeled, Alphabet alpha) {
 		this.instances = instances;
-		this.parserAccuracies = parserAccuracies;
+		this.chosenParsersAccuracies = parserAccuracies;
 		this.depAlphabet = alpha;
 		this.depRelAlphaSize = depAlphabet.size();
 		this.mode = mode;
-		this.length = this.instances.get(0).length();
 		this.labeled = labeled;
 	}
 	
-	public DependencyInstancesVotingGroup(DependencyInstancesVotingGroupParameters params) {
-		this.parserAccuracies = params.parserAccuracies;
+	public DependencyInstancesVotingGroup(DependencyInstancesVotingGroupParameters params, 
+			ArrayList<Double> parserAccuracies) {
 		this.depAlphabet = params.alphabet;
 		this.depRelAlphaSize = this.depAlphabet.size();
+		this.chosenParsersAccuracies = parserAccuracies;
 		this.mode = params.mode;
-		//this.length = this.instances.get(0).length();
 		this.labeled = params.labeled;
 	}
+	
 	
 	/**
 	 * Says if all sentences in this group have the same length.
@@ -76,6 +70,7 @@ public class DependencyInstancesVotingGroup {
 	 * @return true if valid
 	 */
 	public boolean validateGroup() {
+		int length = this.instances.get(0).length();
 		for (DependencyInstance depInst : instances) {
 			if (depInst.length() != length) {
 				System.err.println("Inaccurate Group!");
@@ -96,6 +91,7 @@ public class DependencyInstancesVotingGroup {
 	 * @return
 	 */
 	public double [][] buildGraphVotesMatrixUnlabeled() {
+		int length = this.instances.get(0).length();
 		double [][] scores = new double [length][length];
 		// sentence_length x sentence_length x LAB
 		if (mode.equals(EQUAL_WEIGHTS_MODE)) {
@@ -110,9 +106,7 @@ public class DependencyInstancesVotingGroup {
 		} else {
 			/** AVG ACCURACIES MODE **/
 
-		}
-	
-		
+		}	
 		return scores;
 	}
 	
@@ -126,6 +120,7 @@ public class DependencyInstancesVotingGroup {
 	 * @return
 	 */
 	public double [][][] buildGraphVotesMatrixLabeled(String mode) {
+		int length = this.instances.get(0).length();
 		double [][][]scores = new double [length][length][depAlphabet.size()];
 		if (mode.equals(EQUAL_WEIGHTS_MODE)) {
 			for (DependencyInstance depInst : instances) {
@@ -144,7 +139,7 @@ public class DependencyInstancesVotingGroup {
 			int parserIndex = 0;
 			int [][][] counts = new int [length][length][];
 			for (DependencyInstance depInst : instances) {
-				double parserScore = parserAccuracies.get(parserIndex);
+				double parserScore = chosenParsersAccuracies.get(parserIndex);
 				for (int i = 0; i < depInst.forms.length; i++) {
 					int index = depAlphabet.lookupIndex(depInst.deprels[i]);
 					scores [depInst.heads[i]][i][index] += parserScore;
