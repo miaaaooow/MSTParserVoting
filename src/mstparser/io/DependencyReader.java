@@ -32,10 +32,6 @@ public abstract class DependencyReader {
 
 	public static DependencyReader createDependencyReader(String format,
 			boolean discourseMode, boolean voting) throws IOException {
-
-		if (voting) {
-			return new MSTVotingReader();
-		} 
 		
 		if (format.equals("MST")) {
 			return new MSTReader();

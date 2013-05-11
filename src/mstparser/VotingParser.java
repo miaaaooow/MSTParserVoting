@@ -1,6 +1,8 @@
 package mstparser;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Set;
 
 import mstparser.io.MSTVotingReader;
 
@@ -20,13 +22,45 @@ public class VotingParser {
 	
 	private boolean labeled; // TODO
 	
+	/** indexes of chosen parsers **/
+//	private int [] chosenParsers; 
+	
 	private MSTVotingReader votingReader;
 	
-	public VotingParser() {
-		this.typeAlphabet = new Alphabet();
-		this.votingReader = new MSTVotingReader();
+	public VotingParser(ParserOptions opts) {
+		this.typeAlphabet = new Alphabet();	
 	}
-
+	
+	private void setup (ParserOptions options) throws IOException {
+		createAlphabetAndVotingInstances(options.testfile);
+		int [] chosenParsers = getChosenParsersIndexes(options.votingParser);
+		votingReader = new MSTVotingReader(chosenParsers);
+		labeled = votingReader.startReading(options.testfile);
+	}
+	
+	/**
+	 * Comma separated list of voting parsers indexes.
+	 * 
+	 * @param listOfIndexes
+	 */
+	private int [] getChosenParsersIndexes(String listOfIndexes) {
+		String [] chosenParsersStr = listOfIndexes.split(",");
+		int M = chosenParsersStr.length;
+		if (M < 2) {
+			System.err.println("Wrong number of chosen parsers");
+		}
+		System.out.println("Parsers chosen for voting: ");
+		int [] chosenParsers = new int [M];
+		for (int i = 0; i < M; i++) {
+			System.out.print(chosenParsers[i]);
+			chosenParsers[i] = Integer.parseInt(chosenParsersStr[i]);
+			if (chosenParsers[i] > votingReader.getN()) {
+				System.err.println("Suspicuous chosen parser id");
+			}
+		}
+		Arrays.sort(chosenParsers);
+		return chosenParsers;
+	}
 	
 	/**
 	 * Run voting style with Chu-Liu-Edmonds
@@ -39,11 +73,16 @@ public class VotingParser {
 		} else {
 			opts = defaultOptions();
 		}
-		VotingParser algorithm = new VotingParser();
-		algorithm.createAlphabetAndVotingInstances(opts.testfile);
+		VotingParser algorithm = new VotingParser(opts);
+		
 		
 	}
 	
+	/**
+	 * Sets up typeAlphabet and labeled
+	 * @param file
+	 * @throws IOException
+	 */
 	private final void createAlphabetAndVotingInstances(String file) throws IOException {
 		System.out.print("Creating Dep Rel Alphabet ... ");
 		labeled = votingReader.startReading(file);

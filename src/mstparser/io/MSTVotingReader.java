@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 import mstparser.DependencyInstance;
@@ -20,10 +21,9 @@ import mstparser.DependencyInstancesVotingGroup;
  * 
  * The expected format is as follows; "\t" is the standard separator for compatibility:
  * line1: N_parsers
- * line2: weight1 weight2 ... weight_Nparsers   // Labeled
- * line3: weight1 weight2 ... weight_Nparsers   // Unlabeled
+ * line2: weight1 weight2 ... weight_Nparsers   // Labeled or Unlabeled
  * 	(e.g. we have 12 parsers and want to vote No.1, No.3 and No.12)
- * line4: empty
+ * line3: empty
  * line5: sentence words
  * line6: pos tags
  * line7: labels/heads
@@ -31,36 +31,40 @@ import mstparser.DependencyInstancesVotingGroup;
  * line9: empty or next dependency(if in unlabeled mode) 
  **/
 public class MSTVotingReader extends MSTReader {
-	
+
 	/** number of total parsers that we choose **/
 	private int N; 
 
-	/** weights of all parsers - LABELED **/
-	private double [] weightsOfParsersLAB;
-	
-	/** weights of all parsers - UNLABELED **/
-	private double [] weightsOfParsersULAB;
+	/** weights of all parsers - LABELED or UNLABELED **/
+	private double [] weightsOfParsers;
 	
 	/** indexes of chosen parsers **/
 	private int [] chosenParsers;
 	
 	private Set<Integer> chosenParsersSet;
 	
-	private int instancesCount = 0;
+	private int instancesCount;
 	
 	private ArrayList<DependencyInstancesVotingGroup> votingGroups;
 	
-	public MSTVotingReader () {
-		this.votingGroups = new ArrayList<DependencyInstancesVotingGroup>();
-
+	public MSTVotingReader (int [] chosenParsers) {
+		this.instancesCount = 0;
+		this.chosenParsers = chosenParsers;
+		this.chosenParsersSet = getSet (chosenParsers);
+		this.votingGroups = new ArrayList<DependencyInstancesVotingGroup>(chosenParsers.length);
 	}
+	
+	public int getN() {
+		return N;
+	}
+	
 	public DependencyInstance getNext() throws IOException {
 		instancesCount += 1;
 		DependencyInstance depInst = super.getNext();
 		if (depInst != null) {
-			System.out.println("Instance: " + instancesCount);
-			
+			System.out.println("Instance: " + instancesCount);	
 		}
+		
 		return depInst;
 	}
 	
@@ -75,7 +79,9 @@ public class MSTVotingReader extends MSTReader {
 	}
 	
 	/**
-	 * Returns if labeled or not
+	 * Returns if labeled or not;
+	 * also sets most of the parameter's values:
+	 * labeled, inputReader, N, weightsOfParserLAB, weightsOfParserULAB
 	 */
 	@Override
 	public boolean startReading(String file) throws IOException {
@@ -85,37 +91,18 @@ public class MSTVotingReader extends MSTReader {
 		// number of parsers
 		String line = inputReader.readLine();
 		N = Integer.parseInt(line);
-		weightsOfParsersLAB = new double[N];
-		weightsOfParsersULAB = new double[N];
+		weightsOfParsers = new double[N];
 
 		// weights - labeled; unlabeled
 		line = inputReader.readLine();
 		String [] parsersWeightsL = line.split("\\t"); // labeled
-		line = inputReader.readLine();
-		String [] parsersWeightsU = line.split("\\t"); // unlabeled
-		if (parsersWeightsL.length != N || parsersWeightsU.length != N ||
-			(parsersWeightsL.length != parsersWeightsU.length)) {
+		if (parsersWeightsL.length != N) {
 			System.err.println("Wrong number of parsers' weights");
 		}
 		for (int i = 0; i < N; i++) {
-			weightsOfParsersLAB[i] = Double.parseDouble(parsersWeightsL[i]);
-			weightsOfParsersULAB[i] = Double.parseDouble(parsersWeightsU[i]);
+			weightsOfParsers[i] = Double.parseDouble(parsersWeightsL[i]);
 		}
-		
-		// chosen parsers (M of all N)
-		line = inputReader.readLine();
-		String [] chosenParsersStr = line.split("\\t");
-		int M = chosenParsersStr.length;
-		if (M < 2 || M > N) {
-			System.err.println("Wrong number of chosen parsers");
-		}
-		chosenParsers = new int [M];
-		for (int i = 0; i < M; i++) {
-			chosenParsers[i] = Integer.parseInt(chosenParsersStr[i]);
-			if (chosenParsers[i] > N) {
-				System.err.println("Suspicuous chosen parser id");
-			}
-		}
+
 		Arrays.sort(chosenParsers);
 		System.out.println(chosenParsers.toString());
 		return labeled;
@@ -134,6 +121,14 @@ public class MSTVotingReader extends MSTReader {
 		} else {
 			return false;
 		}
+	}
+	
+	private Set<Integer> getSet(int [] readyGo) {
+		Set<Integer> set = new HashSet<Integer>();
+		for (int entity : readyGo) {
+			set.add(entity);
+		}
+		return set;
 	}
 
 }
