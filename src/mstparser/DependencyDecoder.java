@@ -367,27 +367,27 @@ public class DependencyDecoder {
 	}
 
 	private static TIntIntHashMap chuLiuEdmonds(double[][] scoreMatrix,
-			boolean[] curr_nodes, int[][] oldI, int[][] oldO, boolean print,
+			boolean[] currentNodes, int[][] oldI, int[][] oldO, boolean print,
 			TIntIntHashMap finalEdges, TIntIntHashMap[] reps) {
 
 		// need to construct for each node list of nodes they represent (here
 		// only!)
 
-		int[] par = new int[curr_nodes.length];
-		int numWords = curr_nodes.length;
+		int[] par = new int[currentNodes.length];
+		int numWords = currentNodes.length;
 
 		// create best graph
 		par[0] = -1;
 		for (int i = 1; i < par.length; i++) {
 			// only interested in current nodes
-			if (!curr_nodes[i])
+			if (!currentNodes[i])
 				continue;
 			double maxScore = scoreMatrix[0][i];
 			par[i] = 0;
 			for (int j = 0; j < par.length; j++) {
 				if (j == i)
 					continue;
-				if (!curr_nodes[j])
+				if (!currentNodes[j])
 					continue;
 				double newScore = scoreMatrix[j][i];
 				if (newScore > maxScore) {
@@ -400,7 +400,7 @@ public class DependencyDecoder {
 		if (print) {
 			System.out.println("After init");
 			for (int i = 0; i < par.length; i++) {
-				if (curr_nodes[i])
+				if (currentNodes[i])
 					System.out.print(par[i] + "|" + i + " ");
 			}
 			System.out.println();
@@ -412,7 +412,7 @@ public class DependencyDecoder {
 		for (int i = 0; i < numWords && cycles.size() == 0; i++) {
 			// if I have already considered this or
 			// This is not a valid node (i.e. has been contracted)
-			if (added[i] || !curr_nodes[i])
+			if (added[i] || !currentNodes[i])
 				continue;
 			added[i] = true;
 			TIntIntHashMap cycle = new TIntIntHashMap();
@@ -450,7 +450,7 @@ public class DependencyDecoder {
 		if (cycles.size() == 0) {
 			// System.out.println("TREE:");
 			for (int i = 0; i < par.length; i++) {
-				if (!curr_nodes[i])
+				if (!currentNodes[i])
 					continue;
 				if (par[i] != -1) {
 					int pr = oldI[par[i]][i];
@@ -464,35 +464,35 @@ public class DependencyDecoder {
 			return finalEdges;
 		}
 
-		int max_cyc = 0;
-		int wh_cyc = 0;
+		int maxCyc = 0;
+		int whCyc = 0;
 		for (int i = 0; i < cycles.size(); i++) {
 			TIntIntHashMap cycle = (TIntIntHashMap) cycles.get(i);
-			if (cycle.size() > max_cyc) {
-				max_cyc = cycle.size();
-				wh_cyc = i;
+			if (cycle.size() > maxCyc) {
+				maxCyc = cycle.size();
+				whCyc = i;
 			}
 		}
 
-		TIntIntHashMap cycle = (TIntIntHashMap) cycles.get(wh_cyc);
-		int[] cyc_nodes = cycle.keys();
-		int rep = cyc_nodes[0];
+		TIntIntHashMap cycle = (TIntIntHashMap) cycles.get(whCyc);
+		int[] cycleNodes = cycle.keys();
+		int rep = cycleNodes[0];
 
 		if (print) {
 			System.out.println("Found Cycle");
-			for (int i = 0; i < cyc_nodes.length; i++)
-				System.out.print(cyc_nodes[i] + " ");
+			for (int i = 0; i < cycleNodes.length; i++)
+				System.out.print(cycleNodes[i] + " ");
 			System.out.println();
 		}
 
-		double cyc_weight = 0.0;
-		for (int j = 0; j < cyc_nodes.length; j++) {
-			cyc_weight += scoreMatrix[par[cyc_nodes[j]]][cyc_nodes[j]];
+		double cycleWeight = 0.0;
+		for (int j = 0; j < cycleNodes.length; j++) {
+			cycleWeight += scoreMatrix[par[cycleNodes[j]]][cycleNodes[j]];
 		}
 
 		for (int i = 0; i < numWords; i++) {
 
-			if (!curr_nodes[i] || cycle.contains(i))
+			if (!currentNodes[i] || cycle.contains(i))
 				continue;
 
 			double max1 = Double.NEGATIVE_INFINITY;
@@ -500,8 +500,8 @@ public class DependencyDecoder {
 			double max2 = Double.NEGATIVE_INFINITY;
 			int wh2 = -1;
 
-			for (int j = 0; j < cyc_nodes.length; j++) {
-				int j1 = cyc_nodes[j];
+			for (int j = 0; j < cycleNodes.length; j++) {
+				int j1 = cycleNodes[j];
 
 				if (scoreMatrix[j1][i] > max1) {
 					max1 = scoreMatrix[j1][i];
@@ -509,7 +509,7 @@ public class DependencyDecoder {
 				}
 
 				// cycle weight + new edge - removal of old
-				double scr = cyc_weight + scoreMatrix[i][j1]
+				double scr = cycleWeight + scoreMatrix[i][j1]
 						- scoreMatrix[par[j1]][j1];
 				if (scr > max2) {
 					max2 = scr;
@@ -526,15 +526,15 @@ public class DependencyDecoder {
 
 		}
 
-		TIntIntHashMap[] rep_cons = new TIntIntHashMap[cyc_nodes.length];
-		for (int i = 0; i < cyc_nodes.length; i++) {
-			rep_cons[i] = new TIntIntHashMap();
-			int[] keys = reps[cyc_nodes[i]].keys();
+		TIntIntHashMap[] repCons = new TIntIntHashMap[cycleNodes.length];
+		for (int i = 0; i < cycleNodes.length; i++) {
+			repCons[i] = new TIntIntHashMap();
+			int[] keys = reps[cycleNodes[i]].keys();
 			Arrays.sort(keys);
 			if (print)
-				System.out.print(cyc_nodes[i] + ": ");
+				System.out.print(cycleNodes[i] + ": ");
 			for (int j = 0; j < keys.length; j++) {
-				rep_cons[i].put(keys[j], 0);
+				repCons[i].put(keys[j], 0);
 				if (print)
 					System.out.print(keys[j] + " ");
 			}
@@ -544,25 +544,25 @@ public class DependencyDecoder {
 
 		// don't consider not representative nodes
 		// these nodes have been folded
-		for (int i = 1; i < cyc_nodes.length; i++) {
-			curr_nodes[cyc_nodes[i]] = false;
-			int[] keys = reps[cyc_nodes[i]].keys();
+		for (int i = 1; i < cycleNodes.length; i++) {
+			currentNodes[cycleNodes[i]] = false;
+			int[] keys = reps[cycleNodes[i]].keys();
 			for (int j = 0; j < keys.length; j++)
 				reps[rep].put(keys[j], 0);
 		}
 
-		chuLiuEdmonds(scoreMatrix, curr_nodes, oldI, oldO, print, finalEdges,
+		chuLiuEdmonds(scoreMatrix, currentNodes, oldI, oldO, print, finalEdges,
 				reps);
 
 		// check each node in cycle, if one of its representatives
 		// is a key in the final_edges, it is the one.
 		int wh = -1;
 		boolean found = false;
-		for (int i = 0; i < rep_cons.length && !found; i++) {
-			int[] keys = rep_cons[i].keys();
+		for (int i = 0; i < repCons.length && !found; i++) {
+			int[] keys = repCons[i].keys();
 			for (int j = 0; j < keys.length && !found; j++) {
 				if (finalEdges.contains(keys[j])) {
-					wh = cyc_nodes[i];
+					wh = cycleNodes[i];
 					found = true;
 				}
 			}

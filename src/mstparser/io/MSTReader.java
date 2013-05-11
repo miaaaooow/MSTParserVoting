@@ -52,6 +52,7 @@ public class MSTReader extends DependencyReader {
 		String[] deprels_new = new String[deprels.length + 1];
 		int[] heads_new = new int[heads.length + 1];
 
+		// Shift to the right to add the ROOT as id = 0
 		forms_new[0] = "<root>";
 		pos_new[0] = "<root-POS>";
 		deprels_new[0] = "<no-type>";

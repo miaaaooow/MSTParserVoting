@@ -67,7 +67,7 @@ public class VotingParser {
 				"test-file:btb-all.mst", 
 				"output-file:voting-result.txt", 
 				"eval",  "gold-file:btb-gold.mst",
-				"format:MST" };
+				"format:MST", "voting-parsers:1,3,7,11,14" };
 			return new ParserOptions(paramsForABetterWorld) ;
 	}
 }

@@ -22,14 +22,13 @@ import mstparser.DependencyInstancesVotingGroup;
  * line1: N_parsers
  * line2: weight1 weight2 ... weight_Nparsers   // Labeled
  * line3: weight1 weight2 ... weight_Nparsers   // Unlabeled
- * line4: ID1 ID2 IDM of the parsers we choose for this experiment
  * 	(e.g. we have 12 parsers and want to vote No.1, No.3 and No.12)
- * line5: empty
- * line6: sentence words
- * line7: pos tags
- * line8: labels/heads
- * line9: heads or empty(if in unlabeled mode)
- * line10: empty or next dependency(if in unlabeled mode) 
+ * line4: empty
+ * line5: sentence words
+ * line6: pos tags
+ * line7: labels/heads
+ * line8: heads or empty(if in unlabeled mode)
+ * line9: empty or next dependency(if in unlabeled mode) 
  **/
 public class MSTVotingReader extends MSTReader {
 	
@@ -86,7 +85,8 @@ public class MSTVotingReader extends MSTReader {
 		// number of parsers
 		String line = inputReader.readLine();
 		N = Integer.parseInt(line);
-		int M = chosenParsers.length;
+		weightsOfParsersLAB = new double[N];
+		weightsOfParsersULAB = new double[N];
 
 		// weights - labeled; unlabeled
 		line = inputReader.readLine();
@@ -102,9 +102,10 @@ public class MSTVotingReader extends MSTReader {
 			weightsOfParsersULAB[i] = Double.parseDouble(parsersWeightsU[i]);
 		}
 		
-		// chosen 
+		// chosen parsers (M of all N)
 		line = inputReader.readLine();
 		String [] chosenParsersStr = line.split("\\t");
+		int M = chosenParsersStr.length;
 		if (M < 2 || M > N) {
 			System.err.println("Wrong number of chosen parsers");
 		}
