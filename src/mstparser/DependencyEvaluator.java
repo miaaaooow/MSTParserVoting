@@ -16,8 +16,9 @@ public class DependencyEvaluator {
 				.createDependencyReader(format);
 		boolean predLabeled = predictedReader.startReading(pred_file);
 
-		if (labeled != predLabeled)
+		if (labeled != predLabeled) {
 			System.out.println("Gold file and predicted file appear to differ on whether or not they are labeled. Expect problems!!!");
+		}
 
 		int total = 0;
 		int corr = 0;
@@ -33,8 +34,9 @@ public class DependencyEvaluator {
 
 			int instanceLength = goldInstance.length();
 
-			if (instanceLength != predInstance.length())
-				System.out.println("Lengths do not match on sentence " + numsent);
+			if (instanceLength != predInstance.length()) {
+			//	System.out.println("Lengths do not match on sentence " + numsent);
+			}
 
 			int[] goldHeads = goldInstance.heads;
 			String[] goldLabels = goldInstance.deprels;

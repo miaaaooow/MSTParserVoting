@@ -36,7 +36,7 @@ public class VotingParser {
 	}
 	
 	private void setup (ParserOptions options) throws IOException {
-		System.out.println(options.toString());
+		//System.out.println(options.toString());
 		this.options = options;
 		int [] chosenParsers = getChosenParsersIndexes(options.votingParsers);
 		votingReader = new MSTVotingReader(chosenParsers);
@@ -78,9 +78,9 @@ public class VotingParser {
 	 * @throws IOException
 	 */
 	private final void createAlphabetAndVotingInstances(String file) throws IOException {
-		System.out.print("Creating Dep Rel Alphabet ... ");
+	//	System.out.print("Creating Dep Rel Alphabet ... ");
 		labeled = votingReader.startReading(file);
-		System.out.println("Lebeled:" + labeled);
+	//	System.out.println("Lebeled:" + labeled);
 		DependencyInstance instance = votingReader.getNext();
 		while (instance != null) {
 			String[] labs = instance.deprels;
@@ -90,14 +90,14 @@ public class VotingParser {
 			instance = votingReader.getNext();
 		}
 		typeAlphabet.stopGrowth();
-		System.out.println("Done.");
+	//	System.out.println("Done.");
 	}
 	
 	public void vote() throws IOException {
 		ArrayList<DependencyInstancesVotingGroup> groups = votingReader.getVotingGroups();
 		for (DependencyInstancesVotingGroup group : groups) {
 			DependencyInstance result = group.getVotedDependencyInstance();
-			votingWriter.write(result);
+			votingWriter.writeRaw(result);
 		}
 		votingWriter.finishWriting();
 	}
@@ -106,8 +106,8 @@ public class VotingParser {
 	 * Final step; writing files
 	 */
 	public void evaluate() throws IOException {
-		System.out.println(options);
-		System.out.println(options.eval);
+		//System.out.println(options);
+		//System.out.println(options.eval);
 		if (options.eval) {
 			System.out.println("\nEVALUATION PERFORMANCE:");
 			DependencyEvaluator.evaluate(options.goldfile, options.outfile, "MST");
@@ -119,25 +119,33 @@ public class VotingParser {
 	 * @param args
 	 */
 	public static void main(String[] args) throws IOException {
-		ParserOptions opts;
+		String[] a = { "1,3,7,11,14", "3,7,9,11,14", "7,8,9,11,14", "7,8,9,11",
+				"7,9,11", "8,9,11", "1,2,3,4,5,6,7,8,9,10,11,12,13,14" };
 		if (args.length > 1) {
-			opts = new ParserOptions(args);
+			String parsers = args[0];
+			runTheParser(parsers);
 		} else {
-			opts = defaultUnlabeledOptions();
+			for (String parsers: a) {
+				runTheParser(parsers);
+			}
 		}
-		VotingParser algorithm = new VotingParser();
-		algorithm.setup(opts);		
-		
-		// do voting
+	}
 	
-		algorithm.votingWriter.finishWriting();
+	public static void runTheParser(String parsers) throws IOException {
+		ParserOptions opts = defaultUnlabeledOptions(parsers);
+
+		VotingParser algorithm = new VotingParser();
+		algorithm.setup(opts);
+		algorithm.vote();
+
+		// algorithm.votingWriter.finishWriting();
 		algorithm.evaluate();
 	}
 	
 	/** default labeled options for test **/
 	private static ParserOptions defaultLabeledOptions() {
 		String [] paramsForABetterWorld = {
-				"voting-on:true", "voting-mode:equal",
+				"voting-on:true", "voting-mode:accuracies",
 				"voting-parsers:1,3,7,11,14",
 				"test-file:all-parsers-labeled-all.mst", 
 				"output-file:voting-labeled-1_3_7_11_14.mst", 
@@ -147,12 +155,12 @@ public class VotingParser {
 	}
 	
 	/** default unlabeled options for test **/
-	private static ParserOptions defaultUnlabeledOptions() {
+	private static ParserOptions defaultUnlabeledOptions(String commaSepParsersList) {
 		String [] paramsForABetterWorld = {
-				"voting-on:true", "voting-mode:equal",
-				"voting-parsers:1,3,7,11,14",
+				"voting-on:true", "voting-mode:accuracies",
+				"voting-parsers:" + commaSepParsersList,
 				"test-file:all-parsers-unlabeled-all.mst", 
-				"output-file:voting-unlabeled-1_3_7_11_14.mst", 
+				"output-file:voting-unlabeled-" + commaSepParsersList + ".mst", 
 				"eval", "gold-file:gold-unlabeled-all.mst"
 			 };
 			return new ParserOptions(paramsForABetterWorld) ;

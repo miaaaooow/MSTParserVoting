@@ -6,7 +6,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -70,13 +69,13 @@ public class MSTVotingReader extends MSTReader {
 	public DependencyInstance getNext() throws IOException {
 		DependencyInstance depInst = super.getNext();
 		if (depInst != null) {
-			System.out.println("Instance: " + instancesCount);
+			//System.out.println("Instance: " + instancesCount);
 			int numberOfParser = 1 + instancesCount % N;
 			if (chosenParsersSet.contains(numberOfParser)) {
 				currentVotingGroup.instances.add(depInst);
 			}
 			if (numberOfParser == N) {
-				System.out.println("Added new voting group!");
+				currentVotingGroup.validateGroup();
 				votingGroups.add(currentVotingGroup);
 				currentVotingGroup = new DependencyInstancesVotingGroup(votingParams, weightsOfChosenParsers);
 			}
@@ -92,7 +91,7 @@ public class MSTVotingReader extends MSTReader {
 	public ArrayList<Double> getChosenParsersWeights() {
 		ArrayList<Double> res = new ArrayList<Double>();
 		for (int i : chosenParsers) {
-			res.add(weightsOfParsers[i]);
+			res.add(weightsOfParsers[i - 1]); // the index starts from 1, not 0
 		}
 		return res;
 	}
@@ -121,6 +120,8 @@ public class MSTVotingReader extends MSTReader {
 		for (int i = 0; i < N; i++) {
 			weightsOfParsers[i] = Double.parseDouble(parsersWeightsL[i]);
 		}
+		weightsOfChosenParsers = getChosenParsersWeights();
+		currentVotingGroup.setChosenParsersAccuracies(weightsOfChosenParsers);
 		inputReader.readLine();
 		return labeled;
 	}

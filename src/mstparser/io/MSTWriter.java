@@ -37,9 +37,38 @@ public class MSTWriter extends DependencyWriter {
 	public void write(DependencyInstance instance) throws IOException {
 		writer.write(Util.join(instance.forms, '\t') + "\n");
 		writer.write(Util.join(instance.postags, '\t') + "\n");
-		if (labeled)
+		if (labeled) {
 			writer.write(Util.join(instance.deprels, '\t') + "\n");
+		}
 		writer.write(Util.join(instance.heads, '\t') + "\n\n");
 	}
+	
+	/**
+	 * Removing initial <root>, <postag>, etc.
+	 * @param instance
+	 * @throws IOException
+	 */
+	public void writeRaw(DependencyInstance instance) throws IOException {
+		int newLen = instance.forms.length - 1;
+		String[] forms = new String[newLen];
+		String[] postags = new String[newLen];
+		String[] deprels = new String[newLen];
+		int[] heads = new int[newLen];
+		
+		for (int i = 0; i < newLen; i++) {
+			forms[i] = instance.forms[i + 1];
+			postags[i] = instance.postags[i + 1];
+			if (labeled) {
+				deprels[i] = instance.deprels[i + 1];
+			}
+			heads[i] = instance.heads[i + 1];
+		}
+		writer.write(Util.join(forms, '\t') + "\n");
+		writer.write(Util.join(postags, '\t') + "\n");
+		if (labeled)
+			writer.write(Util.join(deprels, '\t') + "\n");
+		writer.write(Util.join(heads, '\t') + "\n\n");
+	}
+	
 
 }

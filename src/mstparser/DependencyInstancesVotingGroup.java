@@ -64,6 +64,10 @@ public class DependencyInstancesVotingGroup {
 		this.labeled = params.labeled;
 	}
 	
+	public void setChosenParsersAccuracies(ArrayList<Double> chosenParsersAccuracies) {
+		this.chosenParsersAccuracies = chosenParsersAccuracies;
+	}
+	
 	/** Sentence properties that apply to the whole group **/
 	public int length() {
 		if (instances.get(0) != null) {
@@ -115,19 +119,49 @@ public class DependencyInstancesVotingGroup {
 	public double [][] buildGraphVotesMatrixUnlabeled() {
 		int length = length();
 		double [][] scores = new double [length][length];
+		int [][] counts = new int [length][length];
+		
 		// sentence_length x sentence_length x LAB
 		if (mode.equals(EQUAL_WEIGHTS_MODE)) {
 			for (DependencyInstance depInst : instances) {
 				for (int i = 0; i < depInst.forms.length; i++) {
-					scores [depInst.heads[i]][i] += 1;
+					if (depInst.heads[i] > -1) { // not a root index
+						scores [depInst.heads[i]][i] += 1;
+					}
 				}
 			}
 
 		} else if (mode.equals(ACCURACIES_MODE)) {
+			int count = 0;
+			for (DependencyInstance depInst : instances) {
+				for (int i = 0; i < depInst.forms.length; i++) {
+					if (depInst.heads[i] > -1) { // not a root index
+						scores [depInst.heads[i]][i] += chosenParsersAccuracies.get(count);
+					}
+				}
+				count += 1;
+			}
 
 		} else {
 			/** AVG ACCURACIES MODE **/
-
+			
+			int count = 0;
+			for (DependencyInstance depInst : instances) {
+				for (int i = 0; i < depInst.forms.length; i++) {
+					if (depInst.heads[i] > -1) { // not a root index
+						scores [depInst.heads[i]][i] += chosenParsersAccuracies.get(count);
+						counts [depInst.heads[i]][i] += 1;
+					}
+				}
+				count += 1;
+			}
+			for (int i = 0; i < scores.length; i++) {
+				for (int j = 0; j < scores.length; j++) {
+					if (counts[i][j] != 0) {
+						scores [i][j] = ((double) scores[i][j]) / counts[i][j];
+					}
+				}
+			}
 		}	
 		return scores;
 	}
@@ -199,8 +233,9 @@ public class DependencyInstancesVotingGroup {
 			for (int j = 0; j < len; j++) {
 				oldI[i][j] = i;
 				oldO[i][j] = j;
-				if (i == j || j == 0)
+				if (i == j || j == 0) {
 					continue; // no self loops of i --> 0
+				}
 			}
 		}
 		/** Invoke Chu-Liu-Edmonds **/
@@ -212,9 +247,10 @@ public class DependencyInstancesVotingGroup {
 		if (labeled) {
 			double [][][] scoreMatrix = buildGraphVotesMatrixLabeled();
 		} else {
+		
 			double [][] scores = buildGraphVotesMatrixUnlabeled();
 			TIntIntHashMap result = 
-					DependencyDecoder.chuLiuEdmonds(scores, currentNodes, oldI, oldO, true, new TIntIntHashMap(), reps);
+					DependencyDecoder.chuLiuEdmonds(scores, currentNodes, oldI, oldO, false, new TIntIntHashMap(), reps);
 			int[] parse = new int[len];
 			int[] res = result.keys();
 			for (int i = 0; i < res.length; i++) {
@@ -223,7 +259,7 @@ public class DependencyInstancesVotingGroup {
 				parse[ch] = pr;
 			}
 			resultDI = new DependencyInstance(forms(), postags(), postags(), parse);
-			System.out.println(resultDI);
+			//System.out.println(resultDI);
 		}
 		return resultDI;
 		
