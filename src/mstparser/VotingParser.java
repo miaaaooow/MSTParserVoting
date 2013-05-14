@@ -1,6 +1,9 @@
 package mstparser;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -119,14 +122,20 @@ public class VotingParser {
 	 * @param args
 	 */
 	public static void main(String[] args) throws IOException {
-		String[] a = { "1,3,7,11,14", "3,7,9,11,14", "7,8,9,11,14", "7,8,9,11",
-				"7,9,11", "8,9,11", "1,2,3,4,5,6,7,8,9,10,11,12,13,14" };
+
 		if (args.length > 1) {
 			String parsers = args[0];
 			runTheParser(parsers);
 		} else {
-			for (String parsers: a) {
-				runTheParser(parsers);
+//			String[] a = { "1,3,7,11,14", "3,7,9,11,14", "7,8,9,11,14", "7,8,9,11",
+//					"7,9,11", "8,9,11", "1,2,3,4,5,6,7,8,9,10,11,12,13,14" };
+//			for (String parsers: a) {
+			BufferedReader combinationsReader = new BufferedReader(new InputStreamReader(
+					new FileInputStream("combinations3_5_7_of_14.txt"), "UTF8"));
+			String line = "";
+			
+			while((line = combinationsReader.readLine()) != null) {
+				runTheParser(line);
 			}
 		}
 	}

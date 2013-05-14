@@ -178,33 +178,41 @@ public class DependencyInstancesVotingGroup {
 	public double [][][] buildGraphVotesMatrixLabeled() {
 		int length = length();
 		double [][][]scores = new double [length][length][depAlphabet.size()];
-		if (mode.equals(EQUAL_WEIGHTS_MODE)) {
-			for (DependencyInstance depInst : instances) {
-				for (int i = 0; i < depInst.forms.length; i++) {
-					int index = depAlphabet.lookupIndex(depInst.deprels[i]);
-					scores [depInst.heads[i]][i][index] += 1;
-					
-					// TODO compress matrix
-				}
-			}
-		} else if (mode.equals(ACCURACIES_MODE)) {
-
-		} else {
-			/** AVG ACCURACIES MODE **/
-			
-			int parserIndex = 0;
-			int [][][] counts = new int [length][length][];
-			for (DependencyInstance depInst : instances) {
-				double parserScore = chosenParsersAccuracies.get(parserIndex);
-				for (int i = 0; i < depInst.forms.length; i++) {
-					int index = depAlphabet.lookupIndex(depInst.deprels[i]);
-					scores [depInst.heads[i]][i][index] += parserScore;
-					counts [depInst.heads[i]][i][index] += 1;
+		int parserIndex = 0;
+		int [][][] counts = new int [length][length][];
+		double [][] maxSoFar = new double [length][length];
+		String [][] relOfMax = new String [length][length];
+		for (DependencyInstance depInst : instances) {
+			// the current parser's weight
+			double parserScore = chosenParsersAccuracies.get(parserIndex);
+			for (int i = 0; i < depInst.forms.length; i++) {
+				int headIndex = depInst.heads[i];
+				// label index in the alphabet
+				int indexRel = depAlphabet.lookupIndex(depInst.deprels[i]);
+				if (mode.equals(EQUAL_WEIGHTS_MODE)) {
+					scores [headIndex][i][indexRel] += 1;
+					if (scores [headIndex][i][indexRel] > maxSoFar[headIndex][i]) {
+						maxSoFar[headIndex][i] = scores [headIndex][i][indexRel];
+						relOfMax [headIndex][i] = depInst.postags[i];
+					}
+				} else if (mode.equals(ACCURACIES_MODE)) {
+					scores [headIndex][i][indexRel] += parserScore;
+				} else {
+					/** AVG ACCURACIES MODE **/
+					scores [headIndex][i][indexRel] += parserScore;
+					counts [headIndex][i][indexRel] += 1;
 				}
 				parserIndex += 1;
 			}
-
 		}
+//			for (int i = 0; i < scores.length; i++) {
+//				for (int j = 0; j < scores.length; j++) {
+//					if (counts[i][j] != 0) {
+//						scores [i][j] = ((double) scores[i][j]) / counts[i][j];
+//					}
+//				}
+//			}
+		
 		return scores;
 	}
 	
