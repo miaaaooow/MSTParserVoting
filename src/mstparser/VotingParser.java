@@ -1,12 +1,10 @@
 package mstparser;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import mstparser.io.MSTReader;
 import mstparser.io.MSTVotingReader;
 import mstparser.io.MSTWriter;
 
@@ -38,16 +36,20 @@ public class VotingParser {
 		this.typeAlphabet = new Alphabet();	
 	}
 	
-	private void setup (ParserOptions options) throws IOException {
+	private void setUp (ParserOptions options) throws IOException {
 		//System.out.println(options.toString());
 		this.options = options;
 		int [] chosenParsers = getChosenParsersIndexes(options.votingParsers);
+		String targetFile = options.testfile;
+		createAlphabet(targetFile);
 		votingReader = new MSTVotingReader(chosenParsers);
+		labeled = votingReader.startReading(targetFile);
+		
 		DependencyInstancesVotingGroupParameters votingParameters = 
 				new DependencyInstancesVotingGroupParameters(typeAlphabet, options.votingMode, labeled);
-		votingReader.setVotingParams(votingParameters);		
-		createAlphabetAndVotingInstances(options.testfile);
-		labeled = votingReader.startReading(options.testfile);
+		votingReader.setVotingParams(votingParameters);	
+		votingReader.setUp();
+		createVotingInstances(options.testfile);
 		
 		votingWriter = new MSTWriter(labeled);
 		votingWriter.startWriting(options.outfile);
@@ -80,20 +82,35 @@ public class VotingParser {
 	 * @param file
 	 * @throws IOException
 	 */
-	private final void createAlphabetAndVotingInstances(String file) throws IOException {
-	//	System.out.print("Creating Dep Rel Alphabet ... ");
-		labeled = votingReader.startReading(file);
-	//	System.out.println("Lebeled:" + labeled);
-		DependencyInstance instance = votingReader.getNext();
+	private final void createAlphabet(String file) throws IOException {
+		System.out.print("Creating Dep Rel Alphabet ... ");
+		
+		MSTVotingReader getAlphaReader = new MSTVotingReader(file);
+		getAlphaReader.startReading(file);
+		DependencyInstance instance = getAlphaReader.getNext();
 		while (instance != null) {
 			String[] labs = instance.deprels;
 			for (int i = 0; i < labs.length; i++) {
 				typeAlphabet.lookupIndex(labs[i]);
 			}
+			instance = getAlphaReader.getNext();
+		}
+		System.out.println(typeAlphabet.size());
+		typeAlphabet.stopGrowth();
+	}
+	
+	/**
+	 * Sets up typeAlphabet and labeled
+	 * @param file
+	 * @throws IOException
+	 */
+	private final void createVotingInstances(String file) throws IOException {
+		System.out.print("Creating Instances ... ");
+		DependencyInstance instance = votingReader.getNext();
+		while (instance != null) {
 			instance = votingReader.getNext();
 		}
-		typeAlphabet.stopGrowth();
-	//	System.out.println("Done.");
+		System.out.println("Done.");
 	}
 	
 	public void vote() throws IOException {
@@ -127,24 +144,26 @@ public class VotingParser {
 			String parsers = args[0];
 			runTheParser(parsers);
 		} else {
-//			String[] a = { "1,3,7,11,14", "3,7,9,11,14", "7,8,9,11,14", "7,8,9,11",
-//					"7,9,11", "8,9,11", "1,2,3,4,5,6,7,8,9,10,11,12,13,14" };
-//			for (String parsers: a) {
-			BufferedReader combinationsReader = new BufferedReader(new InputStreamReader(
-					new FileInputStream("combinations3_5_7_of_14.txt"), "UTF8"));
-			String line = "";
-			
-			while((line = combinationsReader.readLine()) != null) {
-				runTheParser(line);
+			String[] a = { "1,3,7,11,14", "3,7,9,11,14", "7,8,9,11,14", "7,8,9,11",
+					"7,9,11", "8,9,11", "1,2,3,4,5,6,7,8,9,10,11,12,13,14" };
+			for (String parsers: a) {
+				runTheParser(parsers);
 			}
+			//BufferedReader combinationsReader = new BufferedReader(new InputStreamReader(
+			//		new FileInputStream("combinations_2_14.txt"), "UTF8"));
+//			String line = "";
+			
+//			while((line = combinationsReader.readLine()) != null) {
+//				runTheParser(line);
+//			}
 		}
 	}
 	
 	public static void runTheParser(String parsers) throws IOException {
-		ParserOptions opts = defaultUnlabeledOptions(parsers);
+		ParserOptions opts = defaultLabeledOptions();
 
 		VotingParser algorithm = new VotingParser();
-		algorithm.setup(opts);
+		algorithm.setUp(opts);
 		algorithm.vote();
 
 		// algorithm.votingWriter.finishWriting();

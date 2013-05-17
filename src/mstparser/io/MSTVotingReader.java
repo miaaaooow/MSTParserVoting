@@ -31,7 +31,8 @@ import mstparser.DependencyInstancesVotingGroupParameters;
  * line8: empty or next dependency(if in unlabeled mode) 
  **/
 public class MSTVotingReader extends MSTReader {
-
+	boolean getAplphabetOnly = false;
+	
 	/** number of total parsers that we choose **/
 	private int N; 
 
@@ -50,10 +51,22 @@ public class MSTVotingReader extends MSTReader {
 	
 	
 	public MSTVotingReader (int [] chosenParsers) {
+		this.getAplphabetOnly = false;
 		this.instancesCount = 0;
 		this.chosenParsers = chosenParsers;
 		this.chosenParsersSet = getSet(chosenParsers);
 		this.votingGroups = new ArrayList<DependencyInstancesVotingGroup>(chosenParsers.length);
+	}
+	
+	/**
+	 * A constructor for building the alphabet of relations
+	 * @param file
+	 */
+	public MSTVotingReader (String file) {
+		this.getAplphabetOnly = true;
+		this.instancesCount = 0;
+		this.chosenParsers = getArrayOfIndexes(lookupNumberOfParsers(file));
+		this.chosenParsersSet = getSet(chosenParsers);
 	}
 	
 	public void setVotingParams(
@@ -68,7 +81,7 @@ public class MSTVotingReader extends MSTReader {
 	
 	public DependencyInstance getNext() throws IOException {
 		DependencyInstance depInst = super.getNext();
-		if (depInst != null) {
+		if (depInst != null && !getAplphabetOnly) {
 			//System.out.println("Instance: " + instancesCount);
 			int numberOfParser = 1 + instancesCount % N;
 			if (chosenParsersSet.contains(numberOfParser)) {
@@ -120,10 +133,13 @@ public class MSTVotingReader extends MSTReader {
 		for (int i = 0; i < N; i++) {
 			weightsOfParsers[i] = Double.parseDouble(parsersWeightsL[i]);
 		}
-		weightsOfChosenParsers = getChosenParsersWeights();
-		currentVotingGroup.setChosenParsersAccuracies(weightsOfChosenParsers);
 		inputReader.readLine();
 		return labeled;
+	}
+	
+	public void setUp() {
+		weightsOfChosenParsers = getChosenParsersWeights();
+		currentVotingGroup.setChosenParsersAccuracies(weightsOfChosenParsers);
 	}
 
 	@Override
@@ -148,5 +164,26 @@ public class MSTVotingReader extends MSTReader {
 		}
 		return set;
 	}
-
+	
+	/**
+	 * Reads the first line to get how many parsers they are
+	 * @return
+	 */
+	public static int lookupNumberOfParsers(String file) {
+		try {
+			BufferedReader in = new BufferedReader(new FileReader(file));
+			return Integer.parseInt(in.readLine());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return -1;
+	}
+	
+	public static int [] getArrayOfIndexes(int N) {
+		int [] arr = new int [N];
+		for (int i = 0; i < N; i++) {
+			arr[i] = i;
+		}
+		return arr;
+	}
 }

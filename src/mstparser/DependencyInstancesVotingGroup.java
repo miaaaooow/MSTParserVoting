@@ -44,6 +44,11 @@ public class DependencyInstancesVotingGroup {
 	 */
 	boolean labeled;
 	
+	/**
+	 * A holder for the labels; labeled version ;)
+	 */
+	String [][] relOfMax = null;
+	
 	public DependencyInstancesVotingGroup(ArrayList<DependencyInstance> instances, 
 			ArrayList<Double> parserAccuracies, String mode, boolean labeled, Alphabet alpha) {
 		this.instances = instances;
@@ -90,6 +95,20 @@ public class DependencyInstancesVotingGroup {
 		return null;
 	}
 	
+	public String [] deps(double [][] scores) {
+		String [] deprels = new String [length()];
+		for (int i = 0; i < length(); i++) {
+			int maxInd = 0;
+			for (int j = 0; j < scores.length; j++) {
+				if (scores[i][j] > scores[i][maxInd]) {
+					maxInd = j;
+					deprels[i] = relOfMax[i][j];
+				}
+			}
+		}
+		return deprels;
+	}
+	
 	/**
 	 * Says if all sentences in this group have the same length.
 	 * Applied to the whole corpus will indicate consistency of data.
@@ -124,7 +143,7 @@ public class DependencyInstancesVotingGroup {
 		// sentence_length x sentence_length x LAB
 		if (mode.equals(EQUAL_WEIGHTS_MODE)) {
 			for (DependencyInstance depInst : instances) {
-				for (int i = 0; i < depInst.forms.length; i++) {
+				for (int i = 0; i < length; i++) {
 					if (depInst.heads[i] > -1) { // not a root index
 						scores [depInst.heads[i]][i] += 1;
 					}
@@ -134,7 +153,7 @@ public class DependencyInstancesVotingGroup {
 		} else if (mode.equals(ACCURACIES_MODE)) {
 			int count = 0;
 			for (DependencyInstance depInst : instances) {
-				for (int i = 0; i < depInst.forms.length; i++) {
+				for (int i = 0; i < length; i++) {
 					if (depInst.heads[i] > -1) { // not a root index
 						scores [depInst.heads[i]][i] += chosenParsersAccuracies.get(count);
 					}
@@ -175,50 +194,56 @@ public class DependencyInstancesVotingGroup {
 	 * @param mode
 	 * @return
 	 */
-	public double [][][] buildGraphVotesMatrixLabeled() {
+	public double [][] buildGraphVotesMatrixLabeled() {
 		int length = length();
 		double [][][]scores = new double [length][length][depAlphabet.size()];
-		int parserIndex = 0;
-		int [][][] counts = new int [length][length][];
+		double [][] result = new double [length][length];
 		double [][] maxSoFar = new double [length][length];
-		String [][] relOfMax = new String [length][length];
+		relOfMax = new String [length][length];
+		int parserIndex = 0;
+
 		for (DependencyInstance depInst : instances) {
 			// the current parser's weight
 			double parserScore = chosenParsersAccuracies.get(parserIndex);
-			for (int i = 0; i < depInst.forms.length; i++) {
+			for (int i = 0; i < length; i++) {
 				int headIndex = depInst.heads[i];
 				// label index in the alphabet
 				int indexRel = depAlphabet.lookupIndex(depInst.deprels[i]);
+				System.out.println(indexRel);
 				if (mode.equals(EQUAL_WEIGHTS_MODE)) {
 					scores [headIndex][i][indexRel] += 1;
-					if (scores [headIndex][i][indexRel] > maxSoFar[headIndex][i]) {
+					if (scores[headIndex][i][indexRel] > maxSoFar[headIndex][i]) {
 						maxSoFar[headIndex][i] = scores [headIndex][i][indexRel];
-						relOfMax [headIndex][i] = depInst.postags[i];
+						relOfMax[headIndex][i] = depInst.deprels[i];
 					}
 				} else if (mode.equals(ACCURACIES_MODE)) {
 					scores [headIndex][i][indexRel] += parserScore;
+					if (scores [headIndex][i][indexRel] > maxSoFar[headIndex][i]) {
+						maxSoFar[headIndex][i] = scores [headIndex][i][indexRel];
+						relOfMax [headIndex][i] = depInst.deprels[i];
+					}
 				} else {
-					/** AVG ACCURACIES MODE **/
-					scores [headIndex][i][indexRel] += parserScore;
-					counts [headIndex][i][indexRel] += 1;
+					/** AVG ACCURACIES MODE  - INAPPLICABLE **/
+//					scores [headIndex][i][indexRel] += parserScore;
+//					counts [headIndex][i][indexRel] += 1;
 				}
 				parserIndex += 1;
 			}
+			
 		}
-//			for (int i = 0; i < scores.length; i++) {
-//				for (int j = 0; j < scores.length; j++) {
-//					if (counts[i][j] != 0) {
-//						scores [i][j] = ((double) scores[i][j]) / counts[i][j];
-//					}
-//				}
-//			}
+		for (int i = 0; i < length; i++) {
+			for (int j = 0; j < length; j++) {
+				for (int k = 0; k < depAlphabet.size(); k++) {
+					if (result[i][j] < scores[i][j][k]) {
+						result[i][j] = scores[i][j][k];
+					}
+				}
+			}
+		}
 		
-		return scores;
+		return result;
 	}
-	
-	private double [][] compressMatrix(double [][][] scores) {
-		return null ;
-	}
+
 	
 	public DependencyInstance getVotedDependencyInstance() {
 		validateGroup();		
@@ -252,23 +277,28 @@ public class DependencyInstancesVotingGroup {
 			boolean[] currentNodes, int[][] oldI, int[][] oldO, boolean print,
 			TIntIntHashMap finalEdges, TIntIntHashMap[] reps)
 		 */
+		double [][] scores = null;
 		if (labeled) {
-			double [][][] scoreMatrix = buildGraphVotesMatrixLabeled();
+			scores = buildGraphVotesMatrixLabeled();
 		} else {
-		
-			double [][] scores = buildGraphVotesMatrixUnlabeled();
-			TIntIntHashMap result = 
-					DependencyDecoder.chuLiuEdmonds(scores, currentNodes, oldI, oldO, false, new TIntIntHashMap(), reps);
-			int[] parse = new int[len];
-			int[] res = result.keys();
-			for (int i = 0; i < res.length; i++) {
-				int ch = res[i];
-				int pr = result.get(res[i]);
-				parse[ch] = pr;
-			}
-			resultDI = new DependencyInstance(forms(), postags(), postags(), parse);
-			//System.out.println(resultDI);
+			scores = buildGraphVotesMatrixUnlabeled();
 		}
+		TIntIntHashMap result = 
+				DependencyDecoder.chuLiuEdmonds(scores, currentNodes, oldI, oldO, false, new TIntIntHashMap(), reps);
+		int[] parse = new int[len];
+		int[] res = result.keys();
+		for (int i = 0; i < res.length; i++) {
+			int ch = res[i];
+			int pr = result.get(res[i]);
+			parse[ch] = pr;
+		}
+		if (labeled) {
+			resultDI = new DependencyInstance(forms(), postags(), deps(scores), parse);
+		} else {
+			resultDI = new DependencyInstance(forms(), postags(), postags(), parse);
+		}
+		System.out.println(resultDI);
+		
 		return resultDI;
 		
 	}

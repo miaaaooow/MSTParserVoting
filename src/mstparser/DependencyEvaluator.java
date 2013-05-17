@@ -35,7 +35,7 @@ public class DependencyEvaluator {
 			int instanceLength = goldInstance.length();
 
 			if (instanceLength != predInstance.length()) {
-			//	System.out.println("Lengths do not match on sentence " + numsent);
+				System.out.println("Lengths do not match on sentence " + numsent);
 			}
 
 			int[] goldHeads = goldInstance.heads;
