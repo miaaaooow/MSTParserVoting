@@ -1,10 +1,12 @@
 package mstparser;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import mstparser.io.MSTReader;
 import mstparser.io.MSTVotingReader;
 import mstparser.io.MSTWriter;
 
@@ -144,23 +146,28 @@ public class VotingParser {
 			String parsers = args[0];
 			runTheParser(parsers);
 		} else {
-			String[] a = { "1,3,7,11,14", "3,7,9,11,14", "7,8,9,11,14", "7,8,9,11",
-					"7,9,11", "8,9,11", "1,2,3,4,5,6,7,8,9,10,11,12,13,14" };
-			for (String parsers: a) {
-				runTheParser(parsers);
-			}
-			//BufferedReader combinationsReader = new BufferedReader(new InputStreamReader(
-			//		new FileInputStream("combinations_2_14.txt"), "UTF8"));
-//			String line = "";
+//			String[] a = { "1,3,7,11,14", "3,7,9,11,14", "7,8,9,11,14", "7,8,9,11",
+//					"7,9,11", "8,9,11", "1,2,3,4,5,6,7,8,9,10,11,12,13,14" };
+//			for (String parsers: a) {
+//				runTheParser(parsers);
+//			}
+			BufferedReader combinationsReader = new BufferedReader(new InputStreamReader(
+					new FileInputStream("combinations7_14.txt"), "UTF8"));
+//			BufferedReader combinationsReader2 = new BufferedReader(new InputStreamReader(
+//					new FileInputStream("combinations_2_14.txt"), "UTF8"));
+			String line = "";
 			
-//			while((line = combinationsReader.readLine()) != null) {
+			while((line = combinationsReader.readLine()) != null) {
+				runTheParser(line);
+			}
+//			while((line = combinationsReader2.readLine()) != null) {
 //				runTheParser(line);
 //			}
 		}
 	}
 	
 	public static void runTheParser(String parsers) throws IOException {
-		ParserOptions opts = defaultLabeledOptions();
+		ParserOptions opts = defaultLabeledOptions(parsers);
 
 		VotingParser algorithm = new VotingParser();
 		algorithm.setUp(opts);
@@ -171,12 +178,12 @@ public class VotingParser {
 	}
 	
 	/** default labeled options for test **/
-	private static ParserOptions defaultLabeledOptions() {
+	private static ParserOptions defaultLabeledOptions(String parsers) {
 		String [] paramsForABetterWorld = {
 				"voting-on:true", "voting-mode:accuracies",
-				"voting-parsers:1,3,7,11,14",
+				"voting-parsers:" + parsers,
 				"test-file:all-parsers-labeled-all.mst", 
-				"output-file:voting-labeled-1_3_7_11_14.mst", 
+				"output-file:voting-labeled-" + parsers + ".mst", 
 				"eval", "gold-file:gold-labeled-all.mst"
 			 };
 			return new ParserOptions(paramsForABetterWorld) ;
@@ -185,10 +192,10 @@ public class VotingParser {
 	/** default unlabeled options for test **/
 	private static ParserOptions defaultUnlabeledOptions(String commaSepParsersList) {
 		String [] paramsForABetterWorld = {
-				"voting-on:true", "voting-mode:accuracies",
+				"voting-on:true", "voting-mode:avg-accuracies",
 				"voting-parsers:" + commaSepParsersList,
 				"test-file:all-parsers-unlabeled-all.mst", 
-				"output-file:voting-unlabeled-" + commaSepParsersList + ".mst", 
+				"output-file:voting-unlabeled-avg-acc-" + commaSepParsersList + ".mst", 
 				"eval", "gold-file:gold-unlabeled-all.mst"
 			 };
 			return new ParserOptions(paramsForABetterWorld) ;

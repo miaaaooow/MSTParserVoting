@@ -65,8 +65,9 @@ public class MSTWriter extends DependencyWriter {
 		}
 		writer.write(Util.join(forms, '\t') + "\n");
 		writer.write(Util.join(postags, '\t') + "\n");
-		if (labeled)
+		if (labeled) {
 			writer.write(Util.join(deprels, '\t') + "\n");
+		}
 		writer.write(Util.join(heads, '\t') + "\n\n");
 	}
 	

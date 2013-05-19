@@ -95,16 +95,13 @@ public class DependencyInstancesVotingGroup {
 		return null;
 	}
 	
-	public String [] deps(double [][] scores) {
-		String [] deprels = new String [length()];
-		for (int i = 0; i < length(); i++) {
-			int maxInd = 0;
-			for (int j = 0; j < scores.length; j++) {
-				if (scores[i][j] > scores[i][maxInd]) {
-					maxInd = j;
-					deprels[i] = relOfMax[i][j];
-				}
-			}
+	public String [] deps(int [] parse) {
+		int length = length();
+		// parse[i] = head; head -> parse[i]
+		String [] deprels = new String [length];
+		for (int i = 0; i < length; i++) {
+			if (parse[i] != -1)
+				deprels[i] = relOfMax[parse[i]][i];
 		}
 		return deprels;
 	}
@@ -197,51 +194,45 @@ public class DependencyInstancesVotingGroup {
 	public double [][] buildGraphVotesMatrixLabeled() {
 		int length = length();
 		double [][][]scores = new double [length][length][depAlphabet.size()];
-		double [][] result = new double [length][length];
-		double [][] maxSoFar = new double [length][length];
+		
+		double [][] maximums = new double [length][length];
 		relOfMax = new String [length][length];
-		int parserIndex = 0;
-
+		int count = 0;
 		for (DependencyInstance depInst : instances) {
 			// the current parser's weight
-			double parserScore = chosenParsersAccuracies.get(parserIndex);
+			double parserScore = chosenParsersAccuracies.get(count);
 			for (int i = 0; i < length; i++) {
 				int headIndex = depInst.heads[i];
-				// label index in the alphabet
-				int indexRel = depAlphabet.lookupIndex(depInst.deprels[i]);
-				System.out.println(indexRel);
-				if (mode.equals(EQUAL_WEIGHTS_MODE)) {
-					scores [headIndex][i][indexRel] += 1;
-					if (scores[headIndex][i][indexRel] > maxSoFar[headIndex][i]) {
-						maxSoFar[headIndex][i] = scores [headIndex][i][indexRel];
-						relOfMax[headIndex][i] = depInst.deprels[i];
-					}
-				} else if (mode.equals(ACCURACIES_MODE)) {
-					scores [headIndex][i][indexRel] += parserScore;
-					if (scores [headIndex][i][indexRel] > maxSoFar[headIndex][i]) {
-						maxSoFar[headIndex][i] = scores [headIndex][i][indexRel];
-						relOfMax [headIndex][i] = depInst.deprels[i];
-					}
-				} else {
-					/** AVG ACCURACIES MODE  - INAPPLICABLE **/
-//					scores [headIndex][i][indexRel] += parserScore;
-//					counts [headIndex][i][indexRel] += 1;
-				}
-				parserIndex += 1;
-			}
-			
-		}
-		for (int i = 0; i < length; i++) {
-			for (int j = 0; j < length; j++) {
-				for (int k = 0; k < depAlphabet.size(); k++) {
-					if (result[i][j] < scores[i][j][k]) {
-						result[i][j] = scores[i][j][k];
+				if (headIndex > -1) {
+					// label index in the alphabet
+					//System.out.println(depAlphabet.size());
+					String relation = depInst.deprels[i];
+					int indexRel = depAlphabet.lookupIndex(relation);
+					//System.out.println(indexRel);
+					if (mode.equals(EQUAL_WEIGHTS_MODE)) {
+						scores[headIndex][i][indexRel] += 1;
+						if (scores[headIndex][i][indexRel] > maximums[headIndex][i]) {
+							maximums[headIndex][i] = scores[headIndex][i][indexRel];
+							relOfMax[headIndex][i] = relation;
+						}
+					} else if (mode.equals(ACCURACIES_MODE)) {
+						
+						scores[headIndex][i][indexRel] += parserScore;
+						if (scores[headIndex][i][indexRel] > maximums[headIndex][i]) {
+							maximums[headIndex][i] = scores[headIndex][i][indexRel];
+							relOfMax[headIndex][i] = relation;
+						}
+					} else {
+						/** AVG ACCURACIES MODE - INAPPLICABLE **/
+						// scores [headIndex][i][indexRel] += parserScore;
+						// counts [headIndex][i][indexRel] += 1;
 					}
 				}
 			}
+			count += 1;
 		}
 		
-		return result;
+		return maximums;
 	}
 
 	
@@ -293,11 +284,11 @@ public class DependencyInstancesVotingGroup {
 			parse[ch] = pr;
 		}
 		if (labeled) {
-			resultDI = new DependencyInstance(forms(), postags(), deps(scores), parse);
+			resultDI = new DependencyInstance(forms(), postags(), deps(parse), parse);
 		} else {
 			resultDI = new DependencyInstance(forms(), postags(), postags(), parse);
 		}
-		System.out.println(resultDI);
+		//System.out.println(resultDI);
 		
 		return resultDI;
 		
