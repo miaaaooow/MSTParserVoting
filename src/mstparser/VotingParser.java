@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import mstparser.io.MSTVotingReader;
 import mstparser.io.MSTWriter;
@@ -43,7 +45,8 @@ public class VotingParser {
 		this.options = options;
 		int [] chosenParsers = getChosenParsersIndexes(options.votingParsers);
 		String targetFile = options.testfile;
-		createAlphabet(targetFile);
+		createAlphabetStatic(); // for speed up
+		//createAlphabet(targetFile);
 		votingReader = new MSTVotingReader(chosenParsers);
 		labeled = votingReader.startReading(targetFile);
 		
@@ -80,8 +83,8 @@ public class VotingParser {
 	}
 	
 	/**
-	 * Sets up typeAlphabet and labeled
-	 * @param file
+	 * Sets up typeAlphabet 
+	 * @param file - file with all examples
 	 * @throws IOException
 	 */
 	private final void createAlphabet(String file) throws IOException {
@@ -98,8 +101,43 @@ public class VotingParser {
 			instance = getAlphaReader.getNext();
 		}
 		System.out.println(typeAlphabet.size());
+		
 		typeAlphabet.stopGrowth();
 	}
+	
+	
+	/**
+	 * Sets up typeAlphabet and labeled
+	 * @param file
+	 * @throws IOException
+	 */
+	private final void createAlphabetStatic() {
+		System.out.print("Creating Dep Rel Alphabet ... ");
+		typeAlphabet.lookupIndex("pragadjunct");
+		typeAlphabet.lookupIndex("clitic");
+		typeAlphabet.lookupIndex("ROOT");
+		typeAlphabet.lookupIndex("indobj");
+		typeAlphabet.lookupIndex("marked");
+		typeAlphabet.lookupIndex("xsubj");
+		typeAlphabet.lookupIndex("<no-type>");
+		typeAlphabet.lookupIndex("subj");
+		typeAlphabet.lookupIndex("adjunct");
+		typeAlphabet.lookupIndex("xmod");
+		typeAlphabet.lookupIndex("conjarg");
+		typeAlphabet.lookupIndex("xprepcomp");
+		typeAlphabet.lookupIndex("prepcomp");
+		typeAlphabet.lookupIndex("obj");
+		typeAlphabet.lookupIndex("xcomp");
+		typeAlphabet.lookupIndex("xadjunct");
+		typeAlphabet.lookupIndex("mod");
+		typeAlphabet.lookupIndex("conj");
+		typeAlphabet.lookupIndex("comp");
+		typeAlphabet.lookupIndex("punct");
+		System.out.println(typeAlphabet.size());
+		
+		typeAlphabet.stopGrowth();
+	}
+	
 	
 	/**
 	 * Sets up typeAlphabet and labeled
@@ -152,7 +190,7 @@ public class VotingParser {
 //				runTheParser(parsers);
 //			}
 			BufferedReader combinationsReader = new BufferedReader(new InputStreamReader(
-					new FileInputStream("combinations7_14.txt"), "UTF8"));
+					new FileInputStream("combinations_2_3_5_7_pt2.txt"), "UTF8"));
 //			BufferedReader combinationsReader2 = new BufferedReader(new InputStreamReader(
 //					new FileInputStream("combinations_2_14.txt"), "UTF8"));
 			String line = "";
@@ -163,6 +201,9 @@ public class VotingParser {
 //			while((line = combinationsReader2.readLine()) != null) {
 //				runTheParser(line);
 //			}
+			combinationsReader.close();
+//			combinationsReader2.close();
+			
 		}
 	}
 	

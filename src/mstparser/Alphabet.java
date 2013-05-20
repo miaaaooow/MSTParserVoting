@@ -59,6 +59,12 @@ public class Alphabet implements Serializable {
 	}
 
 	public void stopGrowth() {
+//		if (size() < 30) {
+//			Object[] arr = toArray();
+//			for (int i = 0; i < arr.length; i++) {
+//				System.out.print(" " + arr[i]);
+//			}
+//		}
 		growthStopped = true;
 		map.compact();
 	}
@@ -85,7 +91,7 @@ public class Alphabet implements Serializable {
 
 	private void readObject(ObjectInputStream in) throws IOException,
 			ClassNotFoundException {
-		//int version = 
+		// int version =
 		in.readInt();
 		numEntries = in.readInt();
 		map = (gnu.trove.TObjectIntHashMap) in.readObject();
