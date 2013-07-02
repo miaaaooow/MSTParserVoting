@@ -21,6 +21,7 @@ public class DependencyInstancesVotingGroup {
 	
 	/**
 	 * Corresponding accuracies of the above(weight); so same length
+	 * This is for the case when each parser has a fixed weight
 	 */
 	ArrayList<Double> chosenParsersAccuracies;
 	
@@ -45,18 +46,26 @@ public class DependencyInstancesVotingGroup {
 	boolean labeled;
 	
 	/**
+	 * If each relation has its own weight
+	 */	
+	boolean weightedEdges;
+	
+	/**
 	 * A holder for the labels; labeled version ;)
 	 */
 	String [][] relOfMax = null;
 	
+	double [][] edgesWeights;
+	
 	public DependencyInstancesVotingGroup(ArrayList<DependencyInstance> instances, 
-			ArrayList<Double> parserAccuracies, String mode, boolean labeled, Alphabet alpha) {
+			ArrayList<Double> parserAccuracies, String mode, boolean labeled, boolean weighted, Alphabet alpha) {
 		this.instances = instances;
 		this.chosenParsersAccuracies = parserAccuracies;
 		this.depAlphabet = alpha;
 		this.depRelAlphaSize = depAlphabet.size();
 		this.mode = mode;
 		this.labeled = labeled;
+		this.weightedEdges = weighted;
 	}
 	
 	public DependencyInstancesVotingGroup(DependencyInstancesVotingGroupParameters params, 
@@ -67,6 +76,7 @@ public class DependencyInstancesVotingGroup {
 		this.chosenParsersAccuracies = parserAccuracies;
 		this.mode = params.mode;
 		this.labeled = params.labeled;
+		this.weightedEdges = params.weightedEdges;
 	}
 	
 	public void setChosenParsersAccuracies(ArrayList<Double> chosenParsersAccuracies) {
@@ -194,8 +204,10 @@ public class DependencyInstancesVotingGroup {
 	public double [][] buildGraphVotesMatrixLabeled() {
 		int length = length();
 		double [][][]scores = new double [length][length][depAlphabet.size()];
+		double [][][]counts = new double [length][length][depAlphabet.size()];
 		
 		double [][] maximums = new double [length][length];
+		double [][] countsCurrentMax = new double [length][length];
 		relOfMax = new String [length][length];
 		int count = 0;
 		for (DependencyInstance depInst : instances) {
@@ -223,13 +235,28 @@ public class DependencyInstancesVotingGroup {
 							relOfMax[headIndex][i] = relation;
 						}
 					} else {
-						/** AVG ACCURACIES MODE - INAPPLICABLE **/
-						// scores [headIndex][i][indexRel] += parserScore;
-						// counts [headIndex][i][indexRel] += 1;
+						/** AVG ACCURACIES MODE **/
+						scores[headIndex][i][indexRel] += parserScore;
+						counts[headIndex][i][indexRel] += 1;
+						if (scores[headIndex][i][indexRel] > maximums[headIndex][i]) {
+							maximums[headIndex][i] = scores[headIndex][i][indexRel];
+							relOfMax[headIndex][i] = relation;
+							countsCurrentMax[headIndex][i] = counts[headIndex][i][indexRel];
+						}
 					}
 				}
 			}
 			count += 1;
+		}
+		if (!mode.equals(EQUAL_WEIGHTS_MODE) && !mode.equals(ACCURACIES_MODE)) {
+			/** AVG ACCURACIES MODE **/
+			for (int i = 0; i < maximums.length; i++) {
+				for (int j = 0; j < maximums.length; j++) {
+					if (countsCurrentMax[i][j] != 0) {
+						maximums[i][j] = ((double) maximums[i][j]) / countsCurrentMax[i][j];
+					}
+				}
+			}
 		}
 		
 		return maximums;

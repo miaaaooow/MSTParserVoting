@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 import mstparser.io.MSTVotingReader;
 import mstparser.io.MSTWriter;
@@ -45,13 +43,14 @@ public class VotingParser {
 		this.options = options;
 		int [] chosenParsers = getChosenParsersIndexes(options.votingParsers);
 		String targetFile = options.testfile;
-		createAlphabetStatic(); // for speed up
+		createStaticAlphabet(); // for speed up
 		//createAlphabet(targetFile);
-		votingReader = new MSTVotingReader(chosenParsers);
+		votingReader = new MSTVotingReader(chosenParsers, options.weightedEdges);
 		labeled = votingReader.startReading(targetFile);
 		
 		DependencyInstancesVotingGroupParameters votingParameters = 
-				new DependencyInstancesVotingGroupParameters(typeAlphabet, options.votingMode, labeled);
+				new DependencyInstancesVotingGroupParameters(typeAlphabet, 
+						options.votingMode, labeled, options.weightedEdges);
 		votingReader.setVotingParams(votingParameters);	
 		votingReader.setUp();
 		createVotingInstances(options.testfile);
@@ -111,7 +110,7 @@ public class VotingParser {
 	 * @param file
 	 * @throws IOException
 	 */
-	private final void createAlphabetStatic() {
+	private final void createStaticAlphabet() {
 		System.out.print("Creating Dep Rel Alphabet ... ");
 		typeAlphabet.lookupIndex("pragadjunct");
 		typeAlphabet.lookupIndex("clitic");
@@ -189,20 +188,21 @@ public class VotingParser {
 //			for (String parsers: a) {
 //				runTheParser(parsers);
 //			}
-			BufferedReader combinationsReader = new BufferedReader(new InputStreamReader(
-					new FileInputStream("combinations_2_3_5_7_pt2.txt"), "UTF8"));
-//			BufferedReader combinationsReader2 = new BufferedReader(new InputStreamReader(
-//					new FileInputStream("combinations_2_14.txt"), "UTF8"));
+//			BufferedReader combinationsReader = new BufferedReader(new InputStreamReader(
+//					new FileInputStream("combinations_2_3_5_7_pt2.txt"), "UTF8"));
 			String line = "";
-			
-			while((line = combinationsReader.readLine()) != null) {
-				runTheParser(line);
-			}
-//			while((line = combinationsReader2.readLine()) != null) {
+//			
+//			while((line = combinationsReader.readLine()) != null) {
 //				runTheParser(line);
 //			}
-			combinationsReader.close();
-//			combinationsReader2.close();
+//			combinationsReader.close();
+			BufferedReader combinationsReader1 = new BufferedReader(new InputStreamReader(
+					new FileInputStream("combinations_2_3_5_7_pt1.txt"), "UTF8"));
+			
+			while((line = combinationsReader1.readLine()) != null) {
+				runTheParser(line);
+			}
+			combinationsReader1.close();
 			
 		}
 	}
@@ -221,10 +221,10 @@ public class VotingParser {
 	/** default labeled options for test **/
 	private static ParserOptions defaultLabeledOptions(String parsers) {
 		String [] paramsForABetterWorld = {
-				"voting-on:true", "voting-mode:accuracies",
+				"voting-on:true", "voting-mode:avg-accuracies",
 				"voting-parsers:" + parsers,
 				"test-file:all-parsers-labeled-all.mst", 
-				"output-file:voting-labeled-" + parsers + ".mst", 
+				"output-file:voting-labeled-equal-" + parsers + ".mst", 
 				"eval", "gold-file:gold-labeled-all.mst"
 			 };
 			return new ParserOptions(paramsForABetterWorld) ;

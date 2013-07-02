@@ -14,7 +14,6 @@ package mstparser.io;
 
 import mstparser.DependencyInstance;
 import mstparser.RelationalFeature;
-import mstparser.Util;
 
 import java.io.*;
 import java.util.*;
@@ -118,14 +117,15 @@ public class CONLLReader extends DependencyReader {
 
 
     protected boolean fileContainsLabels (String file) throws IOException {
-	BufferedReader in = new BufferedReader(new FileReader(file));
-	String line = in.readLine();
-	in.close();
+    	BufferedReader in = new BufferedReader(new FileReader(file));
+    	String line = in.readLine();
+    	in.close();
 
-	if(line.trim().length() > 0) 
-	    return true;
-	else
-	    return false;
+    	if(line.trim().length() > 0) {
+    		return true;
+    	} else {
+    		return false;
+    	}
     }
 
 }

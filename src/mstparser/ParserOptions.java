@@ -48,6 +48,7 @@ public final class ParserOptions {
 	public boolean secondOrder = false;
 	public boolean useRelationalFeatures = false;
 	public boolean discourseMode = false;
+	public boolean weightedEdges = false;
 	
 	/** voting parameters **/
 	public boolean votingOn = false;
@@ -124,10 +125,12 @@ public final class ParserOptions {
 			if (pair[0].equals("voting-parsers")) {
 				votingParsers = pair[1];
 			} 
+			if (pair[0].equals("weighted-edges")) {
+				weightedEdges = pair[1].equals("true") ? true : false;
+			}
 		}
 
 		try {
-			File tmpDir = new File("/tmp");
 			if (null != trainfile) {
 				trainforest = File.createTempFile("train", ".forest");
 				trainforest.deleteOnExit();
@@ -188,6 +191,8 @@ public final class ParserOptions {
 		sb.append("voting-mode: " + votingMode);		
 		sb.append(" | ");
 		sb.append("voting-parsers: " + votingParsers);	
+		sb.append(" | ");
+		sb.append("weighted-edges: " + weightedEdges);			
 		sb.append("]\n");
 		return sb.toString();
 	}

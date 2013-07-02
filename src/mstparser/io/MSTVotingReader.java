@@ -23,11 +23,13 @@ import mstparser.DependencyInstancesVotingGroupParameters;
  * line1: N_parsers
  * line2: weight1 weight2 ... weight_Nparsers   // Labeled or Unlabeled
  * 	(e.g. we have 12 parsers and want to vote No.1, No.3 and No.12)
+ * 		If "weighted" edges version - this line is just empty
  * line3: empty
  * line4: sentence words
  * line5: POS tags
- * line6: labels/heads
+ * line6: labels or heads
  * line7: heads or empty(if in unlabeled mode)
+ * line8: weights or empty(weights go with labeled)
  * line8: empty or next dependency(if in unlabeled mode) 
  **/
 public class MSTVotingReader extends MSTReader {
@@ -49,13 +51,19 @@ public class MSTVotingReader extends MSTReader {
 	private ArrayList<DependencyInstancesVotingGroup> votingGroups;
 	private DependencyInstancesVotingGroupParameters votingParams;
 	
+	/**
+	 * If the reader should read an extra line of weights. 
+	 * In this case also the initial lines are different.
+	 */
+	private boolean weighted;
 	
-	public MSTVotingReader (int [] chosenParsers) {
+	public MSTVotingReader (int [] chosenParsers, boolean weighted) {
 		this.getAplphabetOnly = false;
 		this.instancesCount = 0;
 		this.chosenParsers = chosenParsers;
 		this.chosenParsersSet = getSet(chosenParsers);
 		this.votingGroups = new ArrayList<DependencyInstancesVotingGroup>(chosenParsers.length);
+		this.weighted = weighted;
 	}
 	
 	/**

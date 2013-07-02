@@ -13,12 +13,14 @@ public class DependencyInstancesVotingGroupParameters {
 	Alphabet alphabet;
 	String mode;
 	boolean labeled;
+	boolean weightedEdges;
 	ArrayList<Double> parserAccuracies;
 	public DependencyInstancesVotingGroupParameters(Alphabet alphabet,
-			String mode, boolean labeled) {
+			String mode, boolean labeled, boolean weighted) {
 		super();
 		this.alphabet = alphabet;
 		this.mode = mode;
 		this.labeled = labeled;
+		this.weightedEdges = weighted;
 	}	
 }

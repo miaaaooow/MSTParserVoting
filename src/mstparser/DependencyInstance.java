@@ -38,6 +38,8 @@ public class DependencyInstance implements Serializable {
 
 	// DEPREL: the dependency relations, e.g. "SUBJ"
 	public String[] deprels;
+	
+	public double[] weights;
 
 	// RELATIONAL FEATURE: relational features that hold between items
 	public RelationalFeature[] relFeats;
@@ -72,6 +74,15 @@ public class DependencyInstance implements Serializable {
 		this.postags = postags;
 		this.deprels = labs;
 		this.heads = heads;
+	}
+	
+	public DependencyInstance(String[] forms, String[] postags, String[] labs,
+			int[] heads, double[] weights) {
+		this.forms = forms;
+		this.postags = postags;
+		this.deprels = labs;
+		this.heads = heads;
+		this.weights = weights;
 	}
 
 	public DependencyInstance(String[] forms, String[] lemmas,
