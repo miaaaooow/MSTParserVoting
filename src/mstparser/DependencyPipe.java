@@ -33,7 +33,7 @@ public class DependencyPipe {
 		typeAlphabet = new Alphabet();
 
 		depReader = DependencyReader.createDependencyReader(options.format,
-				options.discourseMode, options.votingOn);
+				options.discourseMode, options.votingOn, options.weightedEdges);
 	}
 
 	public void initInputFile(String file) throws IOException {
@@ -140,20 +140,16 @@ public class DependencyPipe {
 	private final void createAlphabet(String file) throws IOException {
 
 		System.out.print("Creating Alphabet ... ");
-
 		labeled = depReader.startReading(file);
-
 		DependencyInstance instance = depReader.getNext();
 
 		while (instance != null) {
-
 			String[] labs = instance.deprels;
 			for (int i = 0; i < labs.length; i++) {
 				typeAlphabet.lookupIndex(labs[i]);
 			}
 
 			createFeatureVector(instance);
-
 			instance = depReader.getNext();
 		}
 

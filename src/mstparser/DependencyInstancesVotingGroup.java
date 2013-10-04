@@ -212,6 +212,7 @@ public class DependencyInstancesVotingGroup {
 		int count = 0;
 		for (DependencyInstance depInst : instances) {
 			// the current parser's weight
+			double [] weights = depInst.weights; 
 			double parserScore = chosenParsersAccuracies.get(count);
 			for (int i = 0; i < length; i++) {
 				int headIndex = depInst.heads[i];
@@ -221,14 +222,25 @@ public class DependencyInstancesVotingGroup {
 					String relation = depInst.deprels[i];
 					int indexRel = depAlphabet.lookupIndex(relation);
 					//System.out.println(indexRel);
-					if (mode.equals(EQUAL_WEIGHTS_MODE)) {
+					if (weightedEdges) {
+						if (mode.equals(ACCURACIES_MODE)) {
+							scores[headIndex][i][indexRel] += weights[i] * parserScore;
+						} else {
+							scores[headIndex][i][indexRel] += weights[i];
+						}
+						if (scores[headIndex][i][indexRel] > maximums[headIndex][i]) {
+							maximums[headIndex][i] = scores[headIndex][i][indexRel];
+							relOfMax[headIndex][i] = relation;
+						}
+					} else if (mode.equals(EQUAL_WEIGHTS_MODE)) {
+						/** EQUAL PARSER weights MODE **/
 						scores[headIndex][i][indexRel] += 1;
 						if (scores[headIndex][i][indexRel] > maximums[headIndex][i]) {
 							maximums[headIndex][i] = scores[headIndex][i][indexRel];
 							relOfMax[headIndex][i] = relation;
 						}
 					} else if (mode.equals(ACCURACIES_MODE)) {
-						
+						/** ACCURACIES MODE **/
 						scores[headIndex][i][indexRel] += parserScore;
 						if (scores[headIndex][i][indexRel] > maximums[headIndex][i]) {
 							maximums[headIndex][i] = scores[headIndex][i][indexRel];

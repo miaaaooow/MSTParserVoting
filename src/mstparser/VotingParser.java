@@ -26,7 +26,7 @@ public class VotingParser {
 	/** Alphabet of dependency relation types */
 	private Alphabet typeAlphabet;
 	
-	private boolean labeled; // TODO
+	private boolean labeled;
 	
 	/** indexes of chosen parsers **/
 //	private int [] chosenParsers; 
@@ -43,8 +43,10 @@ public class VotingParser {
 		this.options = options;
 		int [] chosenParsers = getChosenParsersIndexes(options.votingParsers);
 		String targetFile = options.testfile;
-		createStaticAlphabet(); // for speed up
-		//createAlphabet(targetFile);
+		createStaticAlphabet(); // for speed up on BTB
+		
+		//createAlphabet(targetFile, options.weightedEdges);
+		
 		votingReader = new MSTVotingReader(chosenParsers, options.weightedEdges);
 		labeled = votingReader.startReading(targetFile);
 		
@@ -53,7 +55,9 @@ public class VotingParser {
 						options.votingMode, labeled, options.weightedEdges);
 		votingReader.setVotingParams(votingParameters);	
 		votingReader.setUp();
-		createVotingInstances(options.testfile);
+		if (targetFile != null) {
+			createVotingInstances(options.testfile);
+		}
 		
 		votingWriter = new MSTWriter(labeled);
 		votingWriter.startWriting(options.outfile);
@@ -86,10 +90,10 @@ public class VotingParser {
 	 * @param file - file with all examples
 	 * @throws IOException
 	 */
-	private final void createAlphabet(String file) throws IOException {
+	private final void createAlphabet(String file, boolean weighted) throws IOException {
 		System.out.print("Creating Dep Rel Alphabet ... ");
 		
-		MSTVotingReader getAlphaReader = new MSTVotingReader(file);
+		MSTVotingReader getAlphaReader = new MSTVotingReader(file, weighted);
 		getAlphaReader.startReading(file);
 		DependencyInstance instance = getAlphaReader.getNext();
 		while (instance != null) {
@@ -104,38 +108,7 @@ public class VotingParser {
 		typeAlphabet.stopGrowth();
 	}
 	
-	
-	/**
-	 * Sets up typeAlphabet and labeled
-	 * @param file
-	 * @throws IOException
-	 */
-	private final void createStaticAlphabet() {
-		System.out.print("Creating Dep Rel Alphabet ... ");
-		typeAlphabet.lookupIndex("pragadjunct");
-		typeAlphabet.lookupIndex("clitic");
-		typeAlphabet.lookupIndex("ROOT");
-		typeAlphabet.lookupIndex("indobj");
-		typeAlphabet.lookupIndex("marked");
-		typeAlphabet.lookupIndex("xsubj");
-		typeAlphabet.lookupIndex("<no-type>");
-		typeAlphabet.lookupIndex("subj");
-		typeAlphabet.lookupIndex("adjunct");
-		typeAlphabet.lookupIndex("xmod");
-		typeAlphabet.lookupIndex("conjarg");
-		typeAlphabet.lookupIndex("xprepcomp");
-		typeAlphabet.lookupIndex("prepcomp");
-		typeAlphabet.lookupIndex("obj");
-		typeAlphabet.lookupIndex("xcomp");
-		typeAlphabet.lookupIndex("xadjunct");
-		typeAlphabet.lookupIndex("mod");
-		typeAlphabet.lookupIndex("conj");
-		typeAlphabet.lookupIndex("comp");
-		typeAlphabet.lookupIndex("punct");
-		System.out.println(typeAlphabet.size());
-		
-		typeAlphabet.stopGrowth();
-	}
+
 	
 	
 	/**
@@ -173,55 +146,22 @@ public class VotingParser {
 		}
 	}
 	
-	/**
-	 * Run voting style with Chu-Liu-Edmonds
-	 * @param args
-	 */
-	public static void main(String[] args) throws IOException {
-
-		if (args.length > 1) {
-			String parsers = args[0];
-			runTheParser(parsers);
-		} else {
-//			String[] a = { "1,3,7,11,14", "3,7,9,11,14", "7,8,9,11,14", "7,8,9,11",
-//					"7,9,11", "8,9,11", "1,2,3,4,5,6,7,8,9,10,11,12,13,14" };
-//			for (String parsers: a) {
-//				runTheParser(parsers);
-//			}
-//			BufferedReader combinationsReader = new BufferedReader(new InputStreamReader(
-//					new FileInputStream("combinations_2_3_5_7_pt2.txt"), "UTF8"));
-			String line = "";
-//			
-//			while((line = combinationsReader.readLine()) != null) {
-//				runTheParser(line);
-//			}
-//			combinationsReader.close();
-			BufferedReader combinationsReader1 = new BufferedReader(new InputStreamReader(
-					new FileInputStream("combinations_2_3_5_7_pt1.txt"), "UTF8"));
-			
-			while((line = combinationsReader1.readLine()) != null) {
-				runTheParser(line);
-			}
-			combinationsReader1.close();
-			
-		}
-	}
 	
 	public static void runTheParser(String parsers) throws IOException {
-		ParserOptions opts = defaultLabeledOptions(parsers);
-
+		ParserOptions opts =  //defaultWeightedOptions(parsers);
+		 defaultLabeledOptions(parsers);
 		VotingParser algorithm = new VotingParser();
 		algorithm.setUp(opts);
 		algorithm.vote();
 
-		// algorithm.votingWriter.finishWriting();
+		//algorithm.votingWriter.finishWriting();
 		algorithm.evaluate();
 	}
 	
 	/** default labeled options for test **/
 	private static ParserOptions defaultLabeledOptions(String parsers) {
 		String [] paramsForABetterWorld = {
-				"voting-on:true", "voting-mode:avg-accuracies",
+				"voting-on:true", "voting-mode:equal",
 				"voting-parsers:" + parsers,
 				"test-file:all-parsers-labeled-all.mst", 
 				"output-file:voting-labeled-equal-" + parsers + ".mst", 
@@ -240,5 +180,91 @@ public class VotingParser {
 				"eval", "gold-file:gold-unlabeled-all.mst"
 			 };
 			return new ParserOptions(paramsForABetterWorld) ;
+	}
+	
+	/** default weighted options for test **/
+	private static ParserOptions defaultWeightedOptions(String commaSepParsersList) {
+		String [] paramsForABetterWorld = {
+				"voting-on:true", "voting-mode:accuracies",
+				"voting-parsers:" + commaSepParsersList,
+				"test-file:MultTest.mst", 
+				"output-file:mult-voting-weighted-" + commaSepParsersList + ".mst",
+				"eval", "gold-file:gold-weighted.mst", 
+				"weighted-edges:true"
+			 };
+			return new ParserOptions(paramsForABetterWorld) ;
+	}
+	
+	
+	
+	/**
+	 * Sets up typeAlphabet and labeled
+	 * @param file
+	 * @throws IOException
+	 */
+	private final void createStaticAlphabet() {
+		System.out.print("Creating Dep Rel Alphabet ... ");
+		typeAlphabet.lookupIndex("pragadjunct");
+		typeAlphabet.lookupIndex("clitic");
+		typeAlphabet.lookupIndex("ROOT");
+		typeAlphabet.lookupIndex("indobj");
+		typeAlphabet.lookupIndex("marked");
+		typeAlphabet.lookupIndex("xsubj");
+		typeAlphabet.lookupIndex("<no-type>");
+		typeAlphabet.lookupIndex("subj");
+		typeAlphabet.lookupIndex("adjunct");
+		typeAlphabet.lookupIndex("xmod");
+		typeAlphabet.lookupIndex("conjarg");
+		typeAlphabet.lookupIndex("xprepcomp");
+		typeAlphabet.lookupIndex("prepcomp");
+		typeAlphabet.lookupIndex("obj");
+		typeAlphabet.lookupIndex("xcomp");
+		typeAlphabet.lookupIndex("xadjunct");
+		typeAlphabet.lookupIndex("mod");
+		typeAlphabet.lookupIndex("conj");
+		typeAlphabet.lookupIndex("comp");
+		typeAlphabet.lookupIndex("punct");
+		System.out.println(typeAlphabet.size());
+		
+		typeAlphabet.stopGrowth();
+	}
+	
+	/**
+	 * Run voting style with Chu-Liu-Edmonds
+	 * @param args
+	 */
+	public static void main(String[] args) throws IOException {
+
+		if (args.length > 1) {
+			String parsers = args[0];
+			runTheParser(parsers);
+		} else {
+			String[] a = { "1,2,3,4,5,6,7,8,9,10,11,12,13,14" ,
+					"10,11,13", "9,10,11,13", "7,9,10,11,13" 
+					 };
+			for (String parsers: a) {
+				runTheParser(parsers);
+			}
+//			String[] combinations = { "combinations3_5_7_of_14.txt", 
+//					"combinations_2_14.txt", //"combinations_3_14.txt", 
+//					"combinations_4_14.txt",
+//					"combinations_6_14.txt", "combinations_8_14.txt",
+//					"combinations_9_14.txt", "combinations_10_14.txt",
+//					"combinations_11_14.txt", "combinations_12_14.txt",
+//					"combinations_13_14.txt" };
+//			for (String combo: combinations) {
+//			
+//				BufferedReader combinationsReader = new BufferedReader(new InputStreamReader(
+//						new FileInputStream(combo), "UTF8"));
+//				String line = "";
+//				
+//				while((line = combinationsReader.readLine()) != null) {
+//					runTheParser(line);
+//				}
+//				
+//				combinationsReader.close();
+//			}
+			
+		}
 	}
 }

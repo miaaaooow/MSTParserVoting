@@ -28,13 +28,21 @@ import java.io.*;
  * @see mstparser.io.DependencyReader
  */
 public class MSTReader extends DependencyReader {
-
+	
+	boolean weighted;
+	public MSTReader(boolean weighted){
+		super();
+		this.weighted = weighted;
+	}
+	
 	public DependencyInstance getNext() throws IOException {
 		
 		String line = inputReader.readLine();
-		String pos_line = inputReader.readLine();
-		String deprel_line = labeled ? inputReader.readLine() : pos_line;
-		String heads_line = inputReader.readLine();
+		String posLine = inputReader.readLine();
+		String deprelLine = labeled ? inputReader.readLine() : posLine;
+		String headsLine = inputReader.readLine();
+		String weightsLine = weighted ? inputReader.readLine() : null;
+		
 		inputReader.readLine(); // blank line
 
 		if (line == null) {
@@ -43,45 +51,53 @@ public class MSTReader extends DependencyReader {
 		}
 
 		String[] forms = line.split("\t");
-		String[] pos = pos_line.split("\t");
-		String[] deprels = deprel_line.split("\t");
-		int[] heads = Util.stringsToInts(heads_line.split("\t"));
+		String[] pos = posLine.split("\t");
+		String[] deprels = deprelLine.split("\t");
+		String[] weights = weighted ? weightsLine.split("\t") : null;
+		int[] heads = Util.stringsToInts(headsLine.split("\t"));
 
-		String[] forms_new = new String[forms.length + 1];
-		String[] pos_new = new String[pos.length + 1];
-		String[] deprels_new = new String[deprels.length + 1];
-		int[] heads_new = new int[heads.length + 1];
+		String[] formsNew = new String[forms.length + 1];
+		String[] posNew = new String[pos.length + 1];
+		String[] deprelsNew = new String[deprels.length + 1];
+		double[] weightsNew = weighted ? new double[weights.length + 1] : null;
+		int[] headsNew = new int[heads.length + 1];
 
 		// Shift to the right to add the ROOT as id = 0
-		forms_new[0] = "<root>";
-		pos_new[0] = "<root-POS>";
-		deprels_new[0] = "<no-type>";
-		heads_new[0] = -1;
+		formsNew[0] = "<root>";
+		posNew[0] = "<root-POS>";
+		deprelsNew[0] = "<no-type>";
+		headsNew[0] = -1;
+		if (weighted) {
+			weightsNew[0] = 0;
+		}
 		for (int i = 0; i < forms.length; i++) {
-			forms_new[i + 1] = normalize(forms[i]);
-			pos_new[i + 1] = pos[i];
-			deprels_new[i + 1] = labeled ? deprels[i] : "<no-type>";
-			heads_new[i + 1] = heads[i];
+			formsNew[i + 1] = normalize(forms[i]);
+			posNew[i + 1] = pos[i];
+			deprelsNew[i + 1] = labeled ? deprels[i] : "<no-type>";
+			headsNew[i + 1] = heads[i];
+			if (weighted) {
+				weightsNew[i + 1] = Double.parseDouble(weights[i]);
+			}
 		}
 
-		DependencyInstance instance = new DependencyInstance(forms_new,
-				pos_new, deprels_new, heads_new);
+		DependencyInstance instance = new DependencyInstance(formsNew,
+				posNew, deprelsNew, headsNew, weightsNew);
 
 		// set up the course pos tags as just the first letter of the
 		// fine-grained ones
-		String[] cpostags = new String[pos_new.length];
+		String[] cpostags = new String[posNew.length];
 		cpostags[0] = "<root-CPOS>";
-		for (int i = 1; i < pos_new.length; i++) {
-			cpostags[i] = pos_new[i].substring(0, 1);
+		for (int i = 1; i < posNew.length; i++) {
+			cpostags[i] = posNew[i].substring(0, 1);
 		}
 		instance.cpostags = cpostags;
 
 		// set up the lemmas as just the first 5 characters of the forms
-		String[] lemmas = new String[forms_new.length];
+		String[] lemmas = new String[formsNew.length];
 		cpostags[0] = "<root-LEMMA>";
-		for (int i = 1; i < forms_new.length; i++) {
-			int formLength = forms_new[i].length();
-			lemmas[i] = formLength > 5 ? forms_new[i].substring(0, 5) : forms_new[i];
+		for (int i = 1; i < formsNew.length; i++) {
+			int formLength = formsNew[i].length();
+			lemmas[i] = formLength > 5 ? formsNew[i].substring(0, 5) : formsNew[i];
 		}
 		instance.lemmas = lemmas;
 		instance.feats = new String[0][0];

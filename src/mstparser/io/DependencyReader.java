@@ -31,10 +31,10 @@ public abstract class DependencyReader {
 	protected boolean labeled = true;
 
 	public static DependencyReader createDependencyReader(String format,
-			boolean discourseMode, boolean voting) throws IOException {
+			boolean discourseMode, boolean voting, boolean weighted) throws IOException {
 		
 		if (format.equals("MST")) {
-			return new MSTReader();
+			return new MSTReader(weighted);
 		} else if (format.equals("CONLL")) {
 			return new CONLLReader(discourseMode);
 		} else {
@@ -47,7 +47,7 @@ public abstract class DependencyReader {
 	public static DependencyReader createDependencyReader(String format)
 			throws IOException {
 
-		return createDependencyReader(format, false, false);
+		return createDependencyReader(format, false, false, false);
 	}
 
 	public boolean startReading(String file) throws IOException {

@@ -58,6 +58,7 @@ public class MSTVotingReader extends MSTReader {
 	private boolean weighted;
 	
 	public MSTVotingReader (int [] chosenParsers, boolean weighted) {
+		super(weighted);
 		this.getAplphabetOnly = false;
 		this.instancesCount = 0;
 		this.chosenParsers = chosenParsers;
@@ -70,7 +71,8 @@ public class MSTVotingReader extends MSTReader {
 	 * A constructor for building the alphabet of relations
 	 * @param file
 	 */
-	public MSTVotingReader (String file) {
+	public MSTVotingReader (String file, boolean weighted) {
+		super(weighted);
 		this.getAplphabetOnly = true;
 		this.instancesCount = 0;
 		this.chosenParsers = getArrayOfIndexes(lookupNumberOfParsers(file));
@@ -80,7 +82,8 @@ public class MSTVotingReader extends MSTReader {
 	public void setVotingParams(
 			DependencyInstancesVotingGroupParameters votingParams) {
 		this.votingParams = votingParams;
-		this.currentVotingGroup = new DependencyInstancesVotingGroup(votingParams, weightsOfChosenParsers);
+		this.currentVotingGroup = new DependencyInstancesVotingGroup(
+				votingParams, weightsOfChosenParsers);
 	}
 
 	public int getN() {
@@ -90,7 +93,16 @@ public class MSTVotingReader extends MSTReader {
 	public DependencyInstance getNext() throws IOException {
 		DependencyInstance depInst = super.getNext();
 		if (depInst != null && !getAplphabetOnly) {
-			//System.out.println("Instance: " + instancesCount);
+//			if (weighted) {
+//				String [] weightsLine = inputReader.readLine().split("\t");
+//				double [] weights = new double[weightsLine.length + 1];
+//				weights[0] = 0; // empty cell
+//				for (int i = 0; i < weightsLine.length; i++){
+//					weights[i+1] = Double.parseDouble(weightsLine[i]);
+//				}
+//				depInst.setWeights(weights);
+//			}
+//			System.out.println("Instance: " + instancesCount);
 			int numberOfParser = 1 + instancesCount % N;
 			if (chosenParsersSet.contains(numberOfParser)) {
 				currentVotingGroup.instances.add(depInst);
@@ -132,7 +144,6 @@ public class MSTVotingReader extends MSTReader {
 		N = Integer.parseInt(line);
 		weightsOfParsers = new double[N];
 
-		// weights - labeled; unlabeled
 		line = inputReader.readLine();
 		String [] parsersWeightsL = line.split("\\t"); // labeled
 		if (parsersWeightsL.length != N) {
@@ -140,7 +151,8 @@ public class MSTVotingReader extends MSTReader {
 		}
 		for (int i = 0; i < N; i++) {
 			weightsOfParsers[i] = Double.parseDouble(parsersWeightsL[i]);
-		}
+		} 
+
 		inputReader.readLine();
 		return labeled;
 	}
@@ -153,7 +165,13 @@ public class MSTVotingReader extends MSTReader {
 	@Override
 	protected boolean fileContainsLabels(String filename) throws IOException {
 		BufferedReader in = new BufferedReader(new FileReader(filename));
-		for (int i = 0; i < 6; i++) {
+		int border; // line on which are the labels
+//		if (weighted) {
+//			border = 7;
+//		} else {
+			border = 6;
+		//}
+		for (int i = 0; i < border; i++) {
 			in.readLine();
 		}
 		String line = in.readLine();

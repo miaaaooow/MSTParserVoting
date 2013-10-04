@@ -39,6 +39,7 @@ public class DependencyInstance implements Serializable {
 	// DEPREL: the dependency relations, e.g. "SUBJ"
 	public String[] deprels;
 	
+	// weights of relations
 	public double[] weights;
 
 	// RELATIONAL FEATURE: relational features that hold between items
@@ -100,6 +101,10 @@ public class DependencyInstance implements Serializable {
 		this(forms, lemmas, cpostags, postags, feats, labs, heads);
 		this.relFeats = relFeats;
 	}
+	
+	public void setWeights(double[] weights) {
+		this.weights = weights;
+	}
 
 	public void setFeatureVector(FeatureVector fv) {
 		this.fv = fv;
@@ -125,6 +130,7 @@ public class DependencyInstance implements Serializable {
 		out.writeObject(actParseTree);
 		out.writeObject(feats);
 		out.writeObject(relFeats);
+		out.writeObject(weights);
 	}
 
 	private void readObject(ObjectInputStream in) throws IOException,
@@ -138,6 +144,7 @@ public class DependencyInstance implements Serializable {
 		actParseTree = (String) in.readObject();
 		feats = (String[][]) in.readObject();
 		relFeats = (RelationalFeature[]) in.readObject();
+		weights = (double []) in.readObject();
 	}
 
 }
