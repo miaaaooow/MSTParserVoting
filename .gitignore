@@ -9,3 +9,8 @@
 *.jar
 *.war
 *.ear
+.Rhistory
+.project
+.classpath
+
+
