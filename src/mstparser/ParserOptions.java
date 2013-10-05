@@ -118,8 +118,8 @@ public final class ParserOptions {
 			}
 			if (pair[0].equals("voting-mode")) {
 				votingMode = pair[1];
-				if (!ACCURACIES_MODE.equals(votingMode) && !EQUAL_WEIGHTS_MODE.equals(votingMode)) {
-					votingMode = AVG_ACCURACIES_MODE;
+				if (!AVG_ACCURACIES_MODE.equals(votingMode) && !EQUAL_WEIGHTS_MODE.equals(votingMode)) {
+					votingMode = ACCURACIES_MODE;
 				}
 			}
 			if (pair[0].equals("voting-parsers")) {

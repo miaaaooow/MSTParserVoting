@@ -12,5 +12,8 @@
 .Rhistory
 .project
 .classpath
+.settings
+.metadata
+target
 
 
