@@ -52,7 +52,7 @@ public final class ParserOptions {
 	
 	/** voting parameters **/
 	public boolean votingOn = false;
-	public String votingMode = AVG_ACCURACIES_MODE;
+	public String votingMode = ACCURACIES_MODE;
 	public String votingParsers = "";
 	
 

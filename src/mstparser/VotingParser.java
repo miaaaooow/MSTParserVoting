@@ -148,8 +148,8 @@ public class VotingParser {
 	
 	
 	public static void runTheParser(String parsers) throws IOException {
-		ParserOptions opts =  //defaultWeightedOptions(parsers);
-		 defaultLabeledOptions(parsers);
+		ParserOptions opts =  defaultWeightedOptions(parsers);
+		// defaultLabeledOptions(parsers);
 		VotingParser algorithm = new VotingParser();
 		algorithm.setUp(opts);
 		algorithm.vote();
@@ -185,10 +185,11 @@ public class VotingParser {
 	/** default weighted options for test **/
 	private static ParserOptions defaultWeightedOptions(String commaSepParsersList) {
 		String [] paramsForABetterWorld = {
-				"voting-on:true", "voting-mode:accuracies",
+				"voting-on:true", "voting-mode:avg-accuracies",
 				"voting-parsers:" + commaSepParsersList,
-				"test-file:MultTest.mst", 
-				"output-file:mult-voting-weighted-" + commaSepParsersList + ".mst",
+				"test-file:MaxTest.mst", 
+				"output-file:max-voting-weighted.mst",
+				//"output-file:mult-voting-weighted-" + commaSepParsersList + ".mst",
 				"eval", "gold-file:gold-weighted.mst", 
 				"weighted-edges:true"
 			 };
@@ -235,34 +236,34 @@ public class VotingParser {
 	 */
 	public static void main(String[] args) throws IOException {
 
-		if (args.length > 1) {
-			String parsers = args[0];
-			runTheParser(parsers);
-		} else {
-			String[] a = { "1,2,3,4,5,6,7,8,9,10,11,12,13,14" ,
-					"10,11,13", "9,10,11,13", "7,9,10,11,13" 
-					 };
-			for (String parsers: a) {
-				runTheParser(parsers);
-			}
-//			String[] combinations = { "combinations3_5_7_of_14.txt", 
-//					"combinations_2_14.txt", //"combinations_3_14.txt", 
-//					"combinations_4_14.txt",
-//					"combinations_6_14.txt", "combinations_8_14.txt",
-//					"combinations_9_14.txt", "combinations_10_14.txt",
-//					"combinations_11_14.txt", "combinations_12_14.txt",
-//					"combinations_13_14.txt" };
-//			for (String combo: combinations) {
-//			
-//				BufferedReader combinationsReader = new BufferedReader(new InputStreamReader(
-//						new FileInputStream(combo), "UTF8"));
-//				String line = "";
-//				
-//				while((line = combinationsReader.readLine()) != null) {
-//					runTheParser(line);
-//				}
-//				
-//				combinationsReader.close();
+//		if (args.length > 1) {
+//			String parsers = args[0];
+//			runTheParser(parsers);
+//		} else {
+//			String[] a = { "1,2,3,4,5,6,7,8,9,10,11,12,13,14" ,
+//					"10,11,13", "9,10,11,13", "7,9,10,11,13" 
+//					 };
+//			for (String parsers: a) {
+//				runTheParser(parsers);
+//			}
+			String[] combinations = { "combinations3_5_7_of_14.txt", 
+					"combinations_2_14.txt", //"combinations_3_14.txt", 
+					"combinations_4_14.txt",
+					"combinations_6_14.txt", "combinations_8_14.txt",
+					"combinations_9_14.txt", "combinations_10_14.txt",
+					"combinations_11_14.txt", "combinations_12_14.txt",
+					"combinations_13_14.txt" };
+			for (String combo: combinations) {
+			
+				BufferedReader combinationsReader = new BufferedReader(new InputStreamReader(
+						new FileInputStream(combo), "UTF8"));
+				String line = "";
+				
+				while((line = combinationsReader.readLine()) != null) {
+					runTheParser(line);
+				}
+				
+				combinationsReader.close();
 //			}
 			
 		}

@@ -222,33 +222,37 @@ public class DependencyInstancesVotingGroup {
 					String relation = depInst.deprels[i];
 					int indexRel = depAlphabet.lookupIndex(relation);
 					//System.out.println(indexRel);
+					double coef = 1.0;
 					if (weightedEdges) {
-						if (mode.equals(ACCURACIES_MODE)) {
-							scores[headIndex][i][indexRel] += weights[i] * parserScore;
-						} else {
-							scores[headIndex][i][indexRel] += weights[i];
-						}
-						if (scores[headIndex][i][indexRel] > maximums[headIndex][i]) {
-							maximums[headIndex][i] = scores[headIndex][i][indexRel];
-							relOfMax[headIndex][i] = relation;
-						}
-					} else if (mode.equals(EQUAL_WEIGHTS_MODE)) {
+						coef = weights[i];
+					}
+//						if (mode.equals(ACCURACIES_MODE)) {
+//							scores[headIndex][i][indexRel] += weights[i] * parserScore;
+//						} else {
+//							scores[headIndex][i][indexRel] += weights[i];
+//						}
+//						if (scores[headIndex][i][indexRel] > maximums[headIndex][i]) {
+//							maximums[headIndex][i] = scores[headIndex][i][indexRel];
+//							relOfMax[headIndex][i] = relation;
+//						}
+//					} else
+					if (mode.equals(EQUAL_WEIGHTS_MODE)) {
 						/** EQUAL PARSER weights MODE **/
-						scores[headIndex][i][indexRel] += 1;
+						scores[headIndex][i][indexRel] += 1 * coef;
 						if (scores[headIndex][i][indexRel] > maximums[headIndex][i]) {
 							maximums[headIndex][i] = scores[headIndex][i][indexRel];
 							relOfMax[headIndex][i] = relation;
 						}
 					} else if (mode.equals(ACCURACIES_MODE)) {
 						/** ACCURACIES MODE **/
-						scores[headIndex][i][indexRel] += parserScore;
+						scores[headIndex][i][indexRel] += parserScore * coef;
 						if (scores[headIndex][i][indexRel] > maximums[headIndex][i]) {
 							maximums[headIndex][i] = scores[headIndex][i][indexRel];
 							relOfMax[headIndex][i] = relation;
 						}
 					} else {
 						/** AVG ACCURACIES MODE **/
-						scores[headIndex][i][indexRel] += parserScore;
+						scores[headIndex][i][indexRel] += parserScore * coef;
 						counts[headIndex][i][indexRel] += 1;
 						if (scores[headIndex][i][indexRel] > maximums[headIndex][i]) {
 							maximums[headIndex][i] = scores[headIndex][i][indexRel];
@@ -260,7 +264,7 @@ public class DependencyInstancesVotingGroup {
 			}
 			count += 1;
 		}
-		if (!mode.equals(EQUAL_WEIGHTS_MODE) && !mode.equals(ACCURACIES_MODE)) {
+		if (mode.equals(AVG_ACCURACIES_MODE)) {
 			/** AVG ACCURACIES MODE **/
 			for (int i = 0; i < maximums.length; i++) {
 				for (int j = 0; j < maximums.length; j++) {
