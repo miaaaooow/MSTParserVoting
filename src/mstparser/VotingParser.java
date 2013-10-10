@@ -138,8 +138,6 @@ public class VotingParser {
 	 * Final step; writing files
 	 */
 	public void evaluate() throws IOException {
-		//System.out.println(options);
-		//System.out.println(options.eval);
 		if (options.eval) {
 			System.out.println("\nEVALUATION PERFORMANCE:");
 			DependencyEvaluator.evaluate(options.goldfile, options.outfile, "MST");
